@@ -33,6 +33,10 @@
 #include <linux/if_bridge.h>
 #include <linux/version.h>
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+#include <net/netfilter/nf_conntrack_ecache.h>
+#endif
+
 #include "sfe.h"
 #include "sfe_cm.h"
 #include "sfe_backport.h"
@@ -94,7 +98,7 @@ struct sfe_cm {
 	/*
 	 * Callback notifiers.
 	 */
-	struct notifier_block dev_notifier;	/* Device notifier */
+    struct notifier_block dev_notifier;	/* Device notifier */
 	struct notifier_block inet_notifier;	/* IPv4 notifier */
 	struct notifier_block inet6_notifier;	/* IPv6 notifier */
 	u32 exceptions[SFE_CM_EXCEPTION_MAX];
@@ -311,10 +315,6 @@ static unsigned int sfe_cm_post_routing(struct sk_buff *skb, int is_v4)
 	struct nf_conntrack_tuple reply_tuple;
 	struct sk_buff *tmp_skb = NULL;
 	SFE_NF_CONN_ACCT(acct);
-	
-	#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
-    struct net *net=NULL;
-	#endif
 
 	/*
 	 * Don't process broadcast or multicast packets.
@@ -500,11 +500,10 @@ static unsigned int sfe_cm_post_routing(struct sk_buff *skb, int is_v4)
 		sic.dest_td_max_window = ct->proto.tcp.seen[1].td_maxwin;
 		sic.dest_td_end = ct->proto.tcp.seen[1].td_end;
 		sic.dest_td_max_end = ct->proto.tcp.seen[1].td_maxend;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) 
-	net = nf_ct_net(ct);
-	if ((net&&net->ct.sysctl_no_window_check)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+	    if (READ_ONCE(init_net.ct.sysctl_no_window_check)
 #else
-	if (nf_ct_tcp_no_window_check
+	    if (nf_ct_tcp_no_window_check
 #endif
 		    || (ct->proto.tcp.seen[0].flags & IP_CT_TCP_FLAG_BE_LIBERAL)
 		    || (ct->proto.tcp.seen[1].flags & IP_CT_TCP_FLAG_BE_LIBERAL)) {
@@ -707,15 +706,14 @@ sfe_cm_ipv6_post_routing_hook(hooknum, ops, skb, in_unused, out, okfn)
  * sfe_cm_conntrack_event()
  *	Callback event invoked when a conntrack connection's state changes.
  */
-#ifdef CONFIG_NF_CONNTRACK_CHAIN_EVENTS
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
+static int sfe_cm_conntrack_event(unsigned int events, const struct nf_ct_event *item) {
+#elif defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
 static int sfe_cm_conntrack_event(struct notifier_block *this,
-				  unsigned long events, void *ptr)
-#else
-static int sfe_cm_conntrack_event(unsigned int events, struct nf_ct_event *item)
-#endif
-{
-#ifdef CONFIG_NF_CONNTRACK_CHAIN_EVENTS
+				  unsigned long events, void *ptr) {
 	struct nf_ct_event *item = ptr;
+#else
+static int sfe_cm_conntrack_event(unsigned int events, struct nf_ct_event *item) {
 #endif
 	struct sfe_connection_destroy sid;
 	struct nf_conn *ct = item->ct;
@@ -787,7 +785,12 @@ static int sfe_cm_conntrack_event(unsigned int events, struct nf_ct_event *item)
 /*
  * Netfilter conntrack event system to monitor connection tracking changes
  */
-#ifdef CONFIG_NF_CONNTRACK_CHAIN_EVENTS
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
+static struct nf_ct_event_notifier sfe_cm_conntrack_notifier = {
+    .ct_event  = sfe_cm_conntrack_event,
+    .exp_event = sfe_cm_expect_event,
+};
+#elif defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
 static struct notifier_block sfe_cm_conntrack_notifier = {
 	.notifier_call = sfe_cm_conntrack_event,
 };
@@ -822,6 +825,7 @@ static void sfe_cm_sync_rule(struct sfe_connection_sync *sis)
 	struct nf_conntrack_tuple tuple;
 	struct nf_conn *ct;
 	SFE_NF_CONN_ACCT(acct);
+	s32 timeout = 0;
 
 	/*
 	 * Create a tuple so as to be able to look up a connection
@@ -863,7 +867,7 @@ static void sfe_cm_sync_rule(struct sfe_connection_sync *sis)
 
 	ct = nf_ct_tuplehash_to_ctrack(h);
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0))
-	NF_CT_ASSERT(ct->timeout.data == (unsigned long)ct);
+	NF_CT_ASSERT(READ_ONCE(ct->timeout.data) == (unsigned long)ct);
 #endif
 	/*
 	 * Only update if this is not a fixed timeout
@@ -871,9 +875,11 @@ static void sfe_cm_sync_rule(struct sfe_connection_sync *sis)
 	if (!test_bit(IPS_FIXED_TIMEOUT_BIT, &ct->status)) {
 		spin_lock_bh(&ct->lock);
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0))
-		ct->timeout.expires += sis->delta_jiffies;
+		timeout = READ_ONCE(ct->timeout.expires) + sis->delta_jiffies;
+		WRITE_ONCE(ct->timeout.expires, timeout);
 #else
-		ct->timeout += sis->delta_jiffies;
+		timeout = READ_ONCE(ct->timeout) + sis->delta_jiffies;
+		WRITE_ONCE(ct->timeout, timeout);
 #endif
 		spin_unlock_bh(&ct->lock);
 	}
@@ -937,7 +943,7 @@ static void sfe_cm_sync_rule(struct sfe_connection_sync *sis)
 				l4proto = __nf_ct_l4proto_find((sis->is_v6 ? AF_INET6 : AF_INET), IPPROTO_UDP);
 				timeouts = nf_ct_timeout_lookup(&init_net, ct, l4proto);
 				spin_lock_bh(&ct->lock);
-				ct->timeout.expires = jiffies + timeouts[UDP_CT_REPLIED];
+				WRITE_ONCE(ct->timeout.expires, jiffies + timeouts[UDP_CT_REPLIED]);
 				spin_unlock_bh(&ct->lock);
 #else
 				timeouts = nf_ct_timeout_lookup(ct);
@@ -946,7 +952,7 @@ static void sfe_cm_sync_rule(struct sfe_connection_sync *sis)
 				}
 
 				spin_lock_bh(&ct->lock);
-				ct->timeout = jiffies + timeouts[UDP_CT_REPLIED];
+				WRITE_ONCE(ct->timeout, jiffies + timeouts[UDP_CT_REPLIED]);
 				spin_unlock_bh(&ct->lock);
 #endif
 			}
@@ -997,7 +1003,7 @@ static int sfe_cm_inet6_event(struct notifier_block *this, unsigned long event, 
 {
 	struct net_device *dev = ((struct inet6_ifaddr *)ptr)->idev->dev;
 
-	if (dev && (event == NETDEV_DOWN)) {
+    if (dev && (event == NETDEV_DOWN)) {
 		sfe_ipv6_destroy_all_rules_for_dev(dev);
 	}
 
@@ -1063,7 +1069,7 @@ static int __init sfe_cm_init(void)
 		goto exit2;
 	}
 
-	sc->dev_notifier.notifier_call = sfe_cm_device_event;
+    sc->dev_notifier.notifier_call = sfe_cm_device_event;
 	sc->dev_notifier.priority = 1;
 	register_netdevice_notifier(&sc->dev_notifier);
 
@@ -1074,7 +1080,8 @@ static int __init sfe_cm_init(void)
 	sc->inet6_notifier.notifier_call = sfe_cm_inet6_event;
 	sc->inet6_notifier.priority = 1;
 	register_inet6addr_notifier(&sc->inet6_notifier);
-	/*
+
+    /*
 	 * Register our netfilter hooks.
 	 */
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0))
@@ -1093,8 +1100,12 @@ static int __init sfe_cm_init(void)
 	 * function always returns 0.
 	 */
 #ifdef CONFIG_NF_CONNTRACK_EVENTS
-#ifdef CONFIG_NF_CONNTRACK_CHAIN_EVENTS
-	result = nf_conntrack_register_chain_notifier(&init_net, &sfe_cm_conntrack_notifier);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
+    if (!READ_ONCE(init_net.ct.nf_conntrack_event_cb) &&
+         nf_conntrack_register_notifier(&init_net, &sfe_cm_conntrack_notifier) == 0) {
+#elif defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
+    result = nf_conntrack_register_chain_notifier(&init_net, &sfe_cm_conntrack_notifier);
+	if (result < 0) {
 #else
 	result = nf_conntrack_register_notifier(&init_net, &sfe_cm_conntrack_notifier);
 #endif
@@ -1181,7 +1192,9 @@ static void __exit sfe_cm_exit(void)
 	sfe_ipv6_destroy_all_rules_for_dev(NULL);
 
 #ifdef CONFIG_NF_CONNTRACK_EVENTS
-#ifdef CONFIG_NF_CONNTRACK_CHAIN_EVENTS
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
+	nf_conntrack_unregister_notifier(&init_net);
+#elif defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
 	nf_conntrack_unregister_chain_notifier(&init_net, &sfe_cm_conntrack_notifier);
 #else
 	nf_conntrack_unregister_notifier(&init_net, &sfe_cm_conntrack_notifier);
@@ -1205,4 +1218,3 @@ module_exit(sfe_cm_exit)
 
 MODULE_DESCRIPTION("Shortcut Forwarding Engine - Connection Manager");
 MODULE_LICENSE("Dual BSD/GPL");
-

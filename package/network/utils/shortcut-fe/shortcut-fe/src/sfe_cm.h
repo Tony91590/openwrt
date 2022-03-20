@@ -155,6 +155,16 @@ extern int (*athrs_fast_nat_recv)(struct sk_buff *skb);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0)
 extern int nf_ct_tcp_no_window_check;
 #endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
+/*
+ * Callback used for nf_conntrack notifier.
+ */
+static inline int sfe_cm_expect_event(unsigned int events, const struct nf_exp_event *item) {
+    return 0;
+}
+#endif
+
 /*
  * This callback will be called in a timer
  * at 100 times per second to sync stats back to

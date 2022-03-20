@@ -36,6 +36,10 @@
 #include <linux/hashtable.h>
 #include <linux/version.h>
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+#include <net/netfilter/nf_conntrack_ecache.h>
+#endif
+
 #include <sfe_backport.h>
 #include <sfe.h>
 #include <sfe_cm.h>
@@ -451,9 +455,6 @@ static u32 fc_conn_hash(sfe_ip_addr_t *saddr, sfe_ip_addr_t *daddr,
  */
 static int fast_classifier_update_protocol(struct sfe_connection_create *p_sic, struct nf_conn *ct)
 {
-  #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) 
-    struct net *net=NULL ;
-	#endif
 	switch (p_sic->protocol) {
 	case IPPROTO_TCP:
 		p_sic->src_td_window_scale = ct->proto.tcp.seen[0].td_scale;
@@ -464,13 +465,11 @@ static int fast_classifier_update_protocol(struct sfe_connection_create *p_sic, 
 		p_sic->dest_td_max_window = ct->proto.tcp.seen[1].td_maxwin;
 		p_sic->dest_td_end = ct->proto.tcp.seen[1].td_end;
 		p_sic->dest_td_max_end = ct->proto.tcp.seen[1].td_maxend;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) 
-	net = nf_ct_net(ct);
-	if ((net&&net->ct.sysctl_no_window_check)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+		if (READ_ONCE(init_net.ct.sysctl_no_window_check)
 #else
-	if (nf_ct_tcp_no_window_check
+		if (nf_ct_tcp_no_window_check
 #endif
-	
 		    || (ct->proto.tcp.seen[0].flags & IP_CT_TCP_FLAG_BE_LIBERAL)
 		    || (ct->proto.tcp.seen[1].flags & IP_CT_TCP_FLAG_BE_LIBERAL)) {
 			p_sic->flags |= SFE_CREATE_FLAG_NO_SEQ_CHECK;
@@ -1254,19 +1253,27 @@ static void fast_classifier_update_mark(struct sfe_connection_mark *mark, bool i
 }
 
 #ifdef CONFIG_NF_CONNTRACK_EVENTS
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
+/*
+ * Callback used for nf_conntrack notifier.
+ */
+static int fast_classifier_expect_event(unsigned int events, const struct nf_exp_event *item) {
+    return 0;
+}
+#endif
 /*
  * fast_classifier_conntrack_event()
  *	Callback event invoked when a conntrack connection's state changes.
  */
-#ifdef CONFIG_NF_CONNTRACK_CHAIN_EVENTS
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
+static int fast_classifier_conntrack_event(unsigned int events, const struct nf_ct_event *item) {
+#elif defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
 static int fast_classifier_conntrack_event(struct notifier_block *this,
-					   unsigned long events, void *ptr)
-#else
-static int fast_classifier_conntrack_event(unsigned int events, struct nf_ct_event *item)
-#endif
-{
-#ifdef CONFIG_NF_CONNTRACK_CHAIN_EVENTS
+					   unsigned long events, void *ptr) {
 	struct nf_ct_event *item = ptr;
+#else
+static int fast_classifier_conntrack_event(unsigned int events, struct nf_ct_event *item) {
 #endif
 	struct sfe_connection_destroy sid;
 	struct nf_conn *ct = item->ct;
@@ -1410,7 +1417,12 @@ static int fast_classifier_conntrack_event(unsigned int events, struct nf_ct_eve
 /*
  * Netfilter conntrack event system to monitor connection tracking changes
  */
-#ifdef CONFIG_NF_CONNTRACK_CHAIN_EVENTS
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
+static struct nf_ct_event_notifier sfe_cm_conntrack_notifier = {
+    .ct_event  = fast_classifier_conntrack_event,
+    .exp_event = fast_classifier_expect_event,
+};
+#elif defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
 static struct notifier_block fast_classifier_conntrack_notifier = {
 	.notifier_call = fast_classifier_conntrack_event,
 };
@@ -1443,6 +1455,7 @@ static void fast_classifier_sync_rule(struct sfe_connection_sync *sis)
 	struct nf_conntrack_tuple tuple;
 	struct nf_conn *ct;
 	SFE_NF_CONN_ACCT(acct);
+	s32 timeout = 0;
 
 	/*
 	 * Create a tuple so as to be able to look up a connection
@@ -1510,7 +1523,7 @@ static void fast_classifier_sync_rule(struct sfe_connection_sync *sis)
 
 	ct = nf_ct_tuplehash_to_ctrack(h);
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0))
-	NF_CT_ASSERT(ct->timeout.data == (unsigned long)ct);
+	NF_CT_ASSERT(READ_ONCE(ct->timeout.data) == (unsigned long)ct);
 #endif /*KERNEL_VERSION(4, 9, 0)*/
 
 	/*
@@ -1519,9 +1532,11 @@ static void fast_classifier_sync_rule(struct sfe_connection_sync *sis)
 	if (!test_bit(IPS_FIXED_TIMEOUT_BIT, &ct->status)) {
 		spin_lock_bh(&ct->lock);
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0))
-		ct->timeout += sis->delta_jiffies;
+		timeout = READ_ONCE(ct->timeout) + sis->delta_jiffies;
+		WRITE_ONCE(ct->timeout, timeout);
 #else
-		ct->timeout.expires += sis->delta_jiffies;
+		timeout = READ_ONCE(ct->timeout.expires) + sis->delta_jiffies;
+		WRITE_ONCE(ct->timeout.expires, timeout);
 #endif /*KERNEL_VERSION(4, 9, 0)*/
 		spin_unlock_bh(&ct->lock);
 	}
@@ -1825,7 +1840,10 @@ static int __init fast_classifier_init(void)
 	/*
 	 * Register a notifier hook to get fast notifications of expired connections.
 	 */
-#ifdef CONFIG_NF_CONNTRACK_CHAIN_EVENTS
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
+	if (!READ_ONCE(init_net.ct.nf_conntrack_event_cb) &&
+         nf_conntrack_register_notifier(&init_net, &fast_classifier_conntrack_notifier) == 0) {
+#elif defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
 	result = nf_conntrack_register_chain_notifier(&init_net, &fast_classifier_conntrack_notifier);
 #else
 	result = nf_conntrack_register_notifier(&init_net, &fast_classifier_conntrack_notifier);
@@ -1905,7 +1923,9 @@ exit6:
 
 exit5:
 #ifdef CONFIG_NF_CONNTRACK_EVENTS
-#ifdef CONFIG_NF_CONNTRACK_CHAIN_EVENTS
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
+	nf_conntrack_unregister_notifier(&init_net);
+#elif defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS);
 	nf_conntrack_unregister_chain_notifier(&init_net, &fast_classifier_conntrack_notifier);
 #else
 	nf_conntrack_unregister_notifier(&init_net, &fast_classifier_conntrack_notifier);
@@ -1977,7 +1997,9 @@ static void __exit fast_classifier_exit(void)
 	}
 
 #ifdef CONFIG_NF_CONNTRACK_EVENTS
-#ifdef CONFIG_NF_CONNTRACK_CHAIN_EVENTS
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
+	nf_conntrack_unregister_notifier(&init_net);
+#elif defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
 	nf_conntrack_unregister_chain_notifier(&init_net, &fast_classifier_conntrack_notifier);
 #else
 	nf_conntrack_unregister_notifier(&init_net, &fast_classifier_conntrack_notifier);
@@ -1997,4 +2019,3 @@ module_exit(fast_classifier_exit)
 
 MODULE_DESCRIPTION("Shortcut Forwarding Engine - Connection Manager");
 MODULE_LICENSE("Dual BSD/GPL");
-
