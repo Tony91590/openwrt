@@ -33,6 +33,7 @@
 #include <linux/if_bridge.h>
 #include <linux/version.h>
 
+#include <linux/mutex.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
 #include <net/netfilter/nf_conntrack_ecache.h>
 #endif
@@ -316,6 +317,8 @@ static unsigned int sfe_cm_post_routing(struct sk_buff *skb, int is_v4)
 	struct sk_buff *tmp_skb = NULL;
 	SFE_NF_CONN_ACCT(acct);
 
+	struct net *net = NULL;
+
 	/*
 	 * Don't process broadcast or multicast packets.
 	 */
@@ -500,8 +503,9 @@ static unsigned int sfe_cm_post_routing(struct sk_buff *skb, int is_v4)
 		sic.dest_td_max_window = ct->proto.tcp.seen[1].td_maxwin;
 		sic.dest_td_end = ct->proto.tcp.seen[1].td_end;
 		sic.dest_td_max_end = ct->proto.tcp.seen[1].td_maxend;
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
-		const struct *net = nf_ct_net(ct);
+		net = nf_ct_net(ct);
 	    if ((net && net->ct.sysctl_no_window_check)
 #else
 	    if (nf_ct_tcp_no_window_check
@@ -1112,12 +1116,12 @@ static int __init sfe_cm_init(void)
 		goto exit3;
 	}
 
+#ifdef CONFIG_NF_CONNTRACK_EVENTS
 	/*
 	 * Register a notifier hook to get fast notifications of expired connections.
 	 * Note: In CONFIG_NF_CONNTRACK_CHAIN_EVENTS enabled case, nf_conntrack_register_notifier()
 	 * function always returns 0.
 	 */
-#ifdef CONFIG_NF_CONNTRACK_EVENTS
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
     if (!READ_ONCE(init_net.ct.nf_conntrack_event_cb))
         nf_conntrack_register_notifier(&init_net, &sfe_cm_conntrack_notifier);
@@ -1127,14 +1131,13 @@ static int __init sfe_cm_init(void)
 #else
 	result = nf_conntrack_register_notifier(&init_net, &sfe_cm_conntrack_notifier);
 #endif
+	// Unlock notifier registration mutex
+	mutex_unlock(&nf_ct_net_event_lock);
 	if (result < 0) {
 		DEBUG_ERROR("can't register nf notifier hook: %d\n", result);
 		goto exit4;
 	}
 #endif
-
-	// Unlock notifier registration mutex
-	mutex_unlock(&nf_ct_net_event_lock);
 
 	spin_lock_init(&sc->lock);
 
@@ -1164,10 +1167,11 @@ static int __init sfe_cm_init(void)
 #ifdef CONFIG_NF_CONNTRACK_EVENTS
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
 	nf_conntrack_unregister_notifier(&init_net);
-#elif defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS);
+#elif defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
 	nf_conntrack_unregister_chain_notifier(&init_net, &sfe_cm_conntrack_notifier);
 #else
 	nf_conntrack_unregister_notifier(&init_net, &sfe_cm_conntrack_notifier);
+#endif
 
 exit4:
 #endif

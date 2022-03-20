@@ -455,6 +455,8 @@ static u32 fc_conn_hash(sfe_ip_addr_t *saddr, sfe_ip_addr_t *daddr,
  */
 static int fast_classifier_update_protocol(struct sfe_connection_create *p_sic, struct nf_conn *ct)
 {
+	struct net *net = nf_ct_net(ct);
+
 	switch (p_sic->protocol) {
 	case IPPROTO_TCP:
 		p_sic->src_td_window_scale = ct->proto.tcp.seen[0].td_scale;
@@ -466,7 +468,6 @@ static int fast_classifier_update_protocol(struct sfe_connection_create *p_sic, 
 		p_sic->dest_td_end = ct->proto.tcp.seen[1].td_end;
 		p_sic->dest_td_max_end = ct->proto.tcp.seen[1].td_maxend;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
-		const struct net *net = nf_ct_net(ct);
 		if ((net && net->ct.sysctl_no_window_check)
 #else
 		if (nf_ct_tcp_no_window_check
