@@ -59,8 +59,8 @@ define KernelPackage/shortcut-fe-cm
   TITLE:=Kernel driver for SFE
   FILES:=$(PKG_BUILD_DIR)/shortcut-fe-cm.ko
   KCONFIG:= \
-	   CONFIG_NF_CONNTRACK_CHAIN_EVENTS=y \
 	   CONFIG_NF_CONNTRACK_EVENTS=y \
+	   CONFIG_NF_CONNTRACK_CHAIN_EVENTS=n \
 	   CONFIG_XFRM=y
   CONFLICTS:=kmod-shortcut-fe-drv
 endef

@@ -43,7 +43,7 @@ define KernelPackage/ipt-fullconenat
   MAINTAINER:=Chion Tang <tech@chionlab.moe>
   KCONFIG:= \
 	CONFIG_NF_CONNTRACK_EVENTS=y \
-	CONFIG_NF_CONNTRACK_CHAIN_EVENTS=y
+	CONFIG_NF_CONNTRACK_CHAIN_EVENTS=n
   FILES:=$(PKG_BUILD_DIR)/xt_FULLCONENAT.ko
 endef
 

@@ -29,7 +29,7 @@ define KernelPackage/fast-classifier/Default
   FILES:=$(PKG_BUILD_DIR)/fast-classifier.ko
   KCONFIG:= \
 	   CONFIG_NF_CONNTRACK_EVENTS=y \
-	   CONFIG_NF_CONNTRACK_CHAIN_EVENTS=y \
+	   CONFIG_NF_CONNTRACK_CHAIN_EVENTS=n \
 	   CONFIG_NF_CONNTRACK_MARK=y \
 	   CONFIG_XFRM=y
   CONFLICTS:=kmod-shortcut-fe-drv kmod-shortcut-fe-cm
