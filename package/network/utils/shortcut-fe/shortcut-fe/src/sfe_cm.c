@@ -1108,8 +1108,8 @@ static int __init sfe_cm_init(void)
 	if (result < 0) {
 #else
 	result = nf_conntrack_register_notifier(&init_net, &sfe_cm_conntrack_notifier);
-#endif
 	if (result < 0) {
+#endif
 		DEBUG_ERROR("can't register nf notifier hook: %d\n", result);
 		goto exit4;
 	}

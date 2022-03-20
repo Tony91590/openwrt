@@ -1845,10 +1845,11 @@ static int __init fast_classifier_init(void)
          nf_conntrack_register_notifier(&init_net, &fast_classifier_conntrack_notifier) == 0) {
 #elif defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
 	result = nf_conntrack_register_chain_notifier(&init_net, &fast_classifier_conntrack_notifier);
+	if (result < 0) {
 #else
 	result = nf_conntrack_register_notifier(&init_net, &fast_classifier_conntrack_notifier);
-#endif
 	if (result < 0) {
+#endif
 		DEBUG_ERROR("can't register nf notifier hook: %d\n", result);
 		goto exit4;
 	}
