@@ -25,8 +25,17 @@ jobs:
                 echo "CONFIG_TARGET_ROOTFS_INITRAMFS=y\n" >> .config
                 echo "CONFIG_TARGET_INITRAMFS_COMPRESSION_ZSTD=y\n" >> .config
                 echo "CONFIG_PACKAGE_luci=y\n" >> .config
-                echo "CONFIG_PACKAGE_kmod-qca-nss-dp=y\n" >> .config
                 echo "CONFIG_PACKAGE_qca-ssdk-shell=y\n" >> .config
+                echo "CONFIG_PACKAGE_kmod-qca-nss-dp=y\n" >> .config
+                echo "CONFIG_PACKAGE_kmod-qca-nss-drv=y\n" >> .config
+                echo "CONFIG_PACKAGE_kmod-qca-nss-drv-bridge-mgr=y\n" >> .config
+                echo "CONFIG_PACKAGE_kmod-qca-nss-drv-pppoe=y\n" >> .config
+                echo "CONFIG_PACKAGE_kmod-qca-nss-drv-vlan-mgr=y\n" >> .config
+                echo "CONFIG_PACKAGE_kmod-qca-nss-ecm=y\n" >> .config
+                echo "CONFIG_PACKAGE_kmod-shortcut-fe=y\n" >> .config
+                echo "CONFIG_PACKAGE_kmod-shortcut-fe-drv=y\n" >> .config
+                echo "CONFIG_PACKAGE_kmod-qca-ssdk-nohnat=y\n" >> .config
+                echo "CONFIG_PACKAGE_kmod-wireguard=y\n" >> .config
                 make defconfig
 
             - name: Download package sources
