@@ -1,0 +1,97 @@
+--- a/include/linux/skbuff.h
++++ b/include/linux/skbuff.h
+@@ -877,6 +877,10 @@ struct sk_buff {
+ #endif
+ 	__u8			slow_gro:1;
+
++#ifdef CONFIG_SHORTCUT_FE
++	__u8			fast_forwarded:1;
++#endif
++
+ #ifdef CONFIG_NET_SCHED
+ 	__u16			tc_index;	/* traffic control index */
+ #endif
+--- a/include/linux/timer.h
++++ b/include/linux/timer.h
+@@ -18,6 +18,10 @@ struct timer_list {
+ 	void			(*function)(struct timer_list *);
+ 	u32			flags;
+
++#ifdef CONFIG_SHORTCUT_FE
++	unsigned long		cust_data;
++#endif
++
+ #ifdef CONFIG_LOCKDEP
+ 	struct lockdep_map	lockdep_map;
+ #endif
+--- a/net/Kconfig
++++ b/net/Kconfig
+@@ -456,6 +456,9 @@ config FAILOVER
+ 	  migration of VMs with direct attached VFs by failing over to the
+ 	  paravirtual datapath when the VF is unplugged.
+
++config SHORTCUT_FE
++	bool "Enables kernel network stack path for Shortcut  Forwarding Engine"
++
+ config ETHTOOL_NETLINK
+ 	bool "Netlink interface for ethtool"
+ 	default y
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -3574,9 +3574,17 @@ static int xmit_one(struct sk_buff *skb,
+ {
+ 	unsigned int len;
+ 	int rc;
+-
++#ifdef CONFIG_SHORTCUT_FE
++	/* If this skb has been fast forwarded then we don't want it to
++	 * go to any taps (by definition we're trying to bypass them).
++	 */
++	if (!skb->fast_forwarded) {
++#endif
+ 	if (dev_nit_active(dev))
+ 		dev_queue_xmit_nit(skb, dev);
++#ifdef CONFIG_SHORTCUT_FE
++	}
++#endif
+
+ #ifdef CONFIG_ETHERNET_PACKET_MANGLE
+ 	if (dev->eth_mangle_tx && !(skb = dev->eth_mangle_tx(dev, skb)))
+@@ -5203,6 +5211,11 @@ void netdev_rx_handler_unregister(struct
+ }
+ EXPORT_SYMBOL_GPL(netdev_rx_handler_unregister);
+
++#ifdef CONFIG_SHORTCUT_FE
++int (*athrs_fast_nat_recv)(struct sk_buff *skb) __rcu __read_mostly;
++EXPORT_SYMBOL_GPL(athrs_fast_nat_recv);
++#endif
++
+ /*
+  * Limit the use of PFMEMALLOC reserves to those protocols that implement
+  * the special handling of PFMEMALLOC skbs.
+@@ -5251,6 +5264,10 @@ static int __netif_receive_skb_core(stru
+ 	int ret = NET_RX_DROP;
+ 	__be16 type;
+
++#ifdef CONFIG_SHORTCUT_FE
++	int (*fast_recv)(struct sk_buff *skb);
++#endif
++
+ 	net_timestamp_check(!netdev_tstamp_prequeue, skb);
+
+ 	trace_netif_receive_skb(skb);
+@@ -5288,6 +5305,15 @@ another_round:
+ 			goto out;
+ 	}
+
++#ifdef CONFIG_SHORTCUT_FE
++	fast_recv = rcu_dereference(athrs_fast_nat_recv);
++	if (fast_recv) {
++		if (fast_recv(skb)) {
++			ret = NET_RX_SUCCESS;
++			goto out;
++		}
++	}
++#endif
+ 	if (skb_skip_tc_classify(skb))
+ 		goto skip_classify;
