@@ -7,31 +7,10 @@ Change-Id: I446e84dbc3498618425677811a73124b99b5c0ad
 Signed-off-by: Praveenkumar I <ipkumar@codeaurora.org>
 Signed-off-by: Rajkumar Ayyasamy <arajkuma@codeaurora.org>
 ---
- arch/arm64/boot/dts/qcom/ipq8074.dtsi        | 12 ++++
  drivers/clk/qcom/gcc-ipq8074.c               | 57 ++++++++++++++++++
  include/dt-bindings/clock/qcom,gcc-ipq8074.h |  1 +
- 3 files changed, 69 insertions(+), 0 deletion(-)
+ 2 files changed, 57 insertions(+), 0 deletion(-)
 
---- a/arch/arm64/boot/dts/qcom/ipq8074.dtsi
-+++ b/arch/arm64/boot/dts/qcom/ipq8074.dtsi
-@@ -1049,5 +1049,17 @@
- 			resets = <&gcc GCC_EDMA_HW_RESET>;
- 			reset-names = "edma_rst";
- 		};
-+
-+		bias_pll_cc_clk {
-+			compatible = "fixed-clock";
-+			clock-frequency = <300000000>;
-+			#clock-cells = <0>;
-+		};
-+
-+		bias_pll_nss_noc_clk {
-+			compatible = "fixed-clock";
-+			clock-frequency = <416500000>;
-+			#clock-cells = <0>;
-+		};
- 	};
- };
 --- a/drivers/clk/qcom/gcc-ipq8074.c
 +++ b/drivers/clk/qcom/gcc-ipq8074.c
 @@ -3174,6 +3174,24 @@ static struct clk_branch gcc_nss_ptp_ref
