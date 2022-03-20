@@ -501,7 +501,8 @@ static unsigned int sfe_cm_post_routing(struct sk_buff *skb, int is_v4)
 		sic.dest_td_end = ct->proto.tcp.seen[1].td_end;
 		sic.dest_td_max_end = ct->proto.tcp.seen[1].td_maxend;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
-	    if (READ_ONCE(init_net.ct.sysctl_no_window_check)
+		const struct *net = nf_ct_net(ct);
+	    if ((net && net->ct.sysctl_no_window_check)
 #else
 	    if (nf_ct_tcp_no_window_check
 #endif
@@ -781,6 +782,20 @@ static int sfe_cm_conntrack_event(unsigned int events, struct nf_ct_event *item)
 
 	return NOTIFY_DONE;
 }
+
+/*
+ * Conntrack notifiers and hooks lock.
+ */
+static DEFINE_MUTEX(nf_ct_net_event_lock);
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
+/*
+ * Callback used for nf_conntrack notifier.
+ */
+static int sfe_cm_expect_event(unsigned int events, const struct nf_exp_event *item) {
+    return 0;
+}
+#endif
 
 /*
  * Netfilter conntrack event system to monitor connection tracking changes
@@ -1069,6 +1084,9 @@ static int __init sfe_cm_init(void)
 		goto exit2;
 	}
 
+	// Lock mutex before registering notifiers and hooks
+	mutex_lock(&nf_ct_net_event_lock);
+
     sc->dev_notifier.notifier_call = sfe_cm_device_event;
 	sc->dev_notifier.priority = 1;
 	register_netdevice_notifier(&sc->dev_notifier);
@@ -1101,19 +1119,23 @@ static int __init sfe_cm_init(void)
 	 */
 #ifdef CONFIG_NF_CONNTRACK_EVENTS
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
-    if (!READ_ONCE(init_net.ct.nf_conntrack_event_cb) &&
-         nf_conntrack_register_notifier(&init_net, &sfe_cm_conntrack_notifier) == 0) {
+    if (!READ_ONCE(init_net.ct.nf_conntrack_event_cb))
+        nf_conntrack_register_notifier(&init_net, &sfe_cm_conntrack_notifier);
+    result = 0;
 #elif defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
     result = nf_conntrack_register_chain_notifier(&init_net, &sfe_cm_conntrack_notifier);
-	if (result < 0) {
 #else
 	result = nf_conntrack_register_notifier(&init_net, &sfe_cm_conntrack_notifier);
-	if (result < 0) {
 #endif
+	if (result < 0) {
 		DEBUG_ERROR("can't register nf notifier hook: %d\n", result);
 		goto exit4;
 	}
 #endif
+
+	// Unlock notifier registration mutex
+	mutex_unlock(&nf_ct_net_event_lock);
+
 	spin_lock_init(&sc->lock);
 
 	/*
@@ -1136,23 +1158,33 @@ static int __init sfe_cm_init(void)
 	 */
 	sfe_ipv4_register_sync_rule_callback(sfe_cm_sync_rule);
 	sfe_ipv6_register_sync_rule_callback(sfe_cm_sync_rule);
+
 	return 0;
 
 #ifdef CONFIG_NF_CONNTRACK_EVENTS
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
+	nf_conntrack_unregister_notifier(&init_net);
+#elif defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS);
+	nf_conntrack_unregister_chain_notifier(&init_net, &sfe_cm_conntrack_notifier);
+#else
+	nf_conntrack_unregister_notifier(&init_net, &sfe_cm_conntrack_notifier);
+
 exit4:
-#ifdef CONFIG_NF_CONNTRACK_CHAIN_EVENTS
+#endif
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0))
 	nf_unregister_hooks(sfe_cm_ops_post_routing, ARRAY_SIZE(sfe_cm_ops_post_routing));
 #else
 	nf_unregister_net_hooks(&init_net, sfe_cm_ops_post_routing, ARRAY_SIZE(sfe_cm_ops_post_routing));
 #endif
 
-#endif
-#endif
 exit3:
 	unregister_inet6addr_notifier(&sc->inet6_notifier);
 	unregister_inetaddr_notifier(&sc->inet_notifier);
 	unregister_netdevice_notifier(&sc->dev_notifier);
+
+	// Unlock notifier registration mutex
+	mutex_unlock(&nf_ct_net_event_lock);
+
 exit2:
 	kobject_put(sc->sys_sfe_cm);
 
@@ -1191,6 +1223,9 @@ static void __exit sfe_cm_exit(void)
 	sfe_ipv4_destroy_all_rules_for_dev(NULL);
 	sfe_ipv6_destroy_all_rules_for_dev(NULL);
 
+	// Lock notifier registration mutex
+	mutex_lock(&nf_ct_net_event_lock);
+
 #ifdef CONFIG_NF_CONNTRACK_EVENTS
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
 	nf_conntrack_unregister_notifier(&init_net);
@@ -1206,9 +1241,13 @@ static void __exit sfe_cm_exit(void)
 #else
 	nf_unregister_net_hooks(&init_net, sfe_cm_ops_post_routing, ARRAY_SIZE(sfe_cm_ops_post_routing));
 #endif
+
 	unregister_inet6addr_notifier(&sc->inet6_notifier);
 	unregister_inetaddr_notifier(&sc->inet_notifier);
 	unregister_netdevice_notifier(&sc->dev_notifier);
+
+	// Unlock notifier registration mutex
+	mutex_unlock(&nf_ct_net_event_lock);
 
 	kobject_put(sc->sys_sfe_cm);
 }

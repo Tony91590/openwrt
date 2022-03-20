@@ -466,7 +466,8 @@ static int fast_classifier_update_protocol(struct sfe_connection_create *p_sic, 
 		p_sic->dest_td_end = ct->proto.tcp.seen[1].td_end;
 		p_sic->dest_td_max_end = ct->proto.tcp.seen[1].td_maxend;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
-		if (READ_ONCE(init_net.ct.sysctl_no_window_check)
+		const struct net *net = nf_ct_net(ct);
+		if ((net && net->ct.sysctl_no_window_check)
 #else
 		if (nf_ct_tcp_no_window_check
 #endif
@@ -1254,6 +1255,11 @@ static void fast_classifier_update_mark(struct sfe_connection_mark *mark, bool i
 
 #ifdef CONFIG_NF_CONNTRACK_EVENTS
 
+/*
+ * Conntrack notifiers and hooks lock.
+ */
+static DEFINE_MUTEX(nf_ct_net_event_lock);
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
 /*
  * Callback used for nf_conntrack notifier.
@@ -1418,7 +1424,7 @@ static int fast_classifier_conntrack_event(unsigned int events, struct nf_ct_eve
  * Netfilter conntrack event system to monitor connection tracking changes
  */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
-static struct nf_ct_event_notifier sfe_cm_conntrack_notifier = {
+static struct nf_ct_event_notifier fast_classifier_conntrack_notifier = {
     .ct_event  = fast_classifier_conntrack_event,
     .exp_event = fast_classifier_expect_event,
 };
@@ -1815,6 +1821,9 @@ static int __init fast_classifier_init(void)
 		goto exit2;
 	}
 
+	// Lock mutex before registering notifiers and hooks
+	mutex_lock(&nf_ct_net_event_lock);
+
 	sc->dev_notifier.notifier_call = fast_classifier_device_event;
 	sc->dev_notifier.priority = 1;
 	register_netdevice_notifier(&sc->dev_notifier);
@@ -1841,19 +1850,22 @@ static int __init fast_classifier_init(void)
 	 * Register a notifier hook to get fast notifications of expired connections.
 	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
-	if (!READ_ONCE(init_net.ct.nf_conntrack_event_cb) &&
-         nf_conntrack_register_notifier(&init_net, &fast_classifier_conntrack_notifier) == 0) {
+	if (!READ_ONCE(init_net.ct.nf_conntrack_event_cb))
+         nf_conntrack_register_notifier(&init_net, &fast_classifier_conntrack_notifier);
+    result = 0;
 #elif defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
 	result = nf_conntrack_register_chain_notifier(&init_net, &fast_classifier_conntrack_notifier);
-	if (result < 0) {
 #else
 	result = nf_conntrack_register_notifier(&init_net, &fast_classifier_conntrack_notifier);
-	if (result < 0) {
 #endif
+	if (result < 0) {
 		DEBUG_ERROR("can't register nf notifier hook: %d\n", result);
 		goto exit4;
 	}
 #endif
+
+	// Unlock notifier registration mutex
+	mutex_unlock(&nf_ct_net_event_lock);
 
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0))
@@ -1940,6 +1952,10 @@ exit3:
 	unregister_inetaddr_notifier(&sc->inet_notifier);
 	unregister_inet6addr_notifier(&sc->inet6_notifier);
 	unregister_netdevice_notifier(&sc->dev_notifier);
+
+	// Unlock notifier registration mutex
+	mutex_unlock(&nf_ct_net_event_lock);
+
 	sysfs_remove_file(sc->sys_fast_classifier, &fast_classifier_offload_at_pkts_attr.attr);
 	sysfs_remove_file(sc->sys_fast_classifier, &fast_classifier_debug_info_attr.attr);
 	sysfs_remove_file(sc->sys_fast_classifier, &fast_classifier_skip_bridge_ingress.attr);
@@ -1997,6 +2013,9 @@ static void __exit fast_classifier_exit(void)
 		printk(KERN_CRIT "Unable to unregister genl_family\n");
 	}
 
+	// Lock notifier registration mutex
+	mutex_lock(&nf_ct_net_event_lock);
+
 #ifdef CONFIG_NF_CONNTRACK_EVENTS
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) && !defined(CONFIG_NF_CONNTRACK_CHAIN_EVENTS)
 	nf_conntrack_unregister_notifier(&init_net);
@@ -2011,6 +2030,9 @@ static void __exit fast_classifier_exit(void)
 	unregister_inet6addr_notifier(&sc->inet6_notifier);
 	unregister_inetaddr_notifier(&sc->inet_notifier);
 	unregister_netdevice_notifier(&sc->dev_notifier);
+
+	// Unlock notifier registration mutex
+	mutex_unlock(&nf_ct_net_event_lock);
 
 	kobject_put(sc->sys_fast_classifier);
 }
