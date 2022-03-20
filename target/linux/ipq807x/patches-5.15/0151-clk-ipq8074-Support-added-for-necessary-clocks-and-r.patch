@@ -17,7 +17,7 @@ Signed-off-by: Rajkumar Ayyasamy <arajkuma@codeaurora.org>
 @@ -396,6 +396,22 @@ static const struct parent_map gcc_xo_gp
  	{ P_SLEEP_CLK, 6 },
  };
- 
+
 +static const char * const gcc_xo_gpll4_gpll0_gpll6_gpll0_div2[] = {
 +	"xo",
 +	"gpll4",
@@ -40,7 +40,7 @@ Signed-off-by: Rajkumar Ayyasamy <arajkuma@codeaurora.org>
 @@ -962,6 +978,12 @@ static const struct freq_tbl ftbl_pcie_a
  	{ }
  };
- 
+
 +struct freq_tbl ftbl_pcie_rchng_clk_src[] = {
 +	F(19200000, P_XO, 1, 0, 0),
 +	F(100000000, P_GPLL0, 8, 0, 0),
@@ -53,7 +53,7 @@ Signed-off-by: Rajkumar Ayyasamy <arajkuma@codeaurora.org>
 @@ -2013,6 +2035,78 @@ static struct clk_rcg2 gp3_clk_src = {
  	},
  };
- 
+
 +struct freq_tbl ftbl_qdss_tsctr_clk_src[] = {
 +	F(160000000, P_GPLL0_DIV2, 2.5, 0, 0),
 +	F(320000000, P_GPLL0, 2.5, 0, 0),
@@ -132,7 +132,7 @@ Signed-off-by: Rajkumar Ayyasamy <arajkuma@codeaurora.org>
 @@ -4344,13 +4438,7 @@ static struct clk_branch gcc_gp3_clk = {
  	},
  };
- 
+
 -static const struct freq_tbl ftbl_pcie_rchng_clk_src[] = {
 -	F(19200000, P_XO, 1, 0, 0),
 -	F(100000000, P_GPLL0, 8, 0, 0),
@@ -147,7 +147,7 @@ Signed-off-by: Rajkumar Ayyasamy <arajkuma@codeaurora.org>
 @@ -4399,6 +4487,114 @@ static struct clk_branch gcc_pcie0_axi_s
  	},
  };
- 
+
 +static struct clk_branch gcc_snoc_bus_timeout2_ahb_clk = {
 +	.halt_reg = 0x4700c,
 +	.halt_bit = 31,
@@ -265,24 +265,25 @@ Signed-off-by: Rajkumar Ayyasamy <arajkuma@codeaurora.org>
  	&nss_ppe_cdiv_clk_src.hw,
 +	&qdss_dap_sync_clk_src.hw,
  };
- 
+
  static const struct alpha_pll_config ubi32_pll_config = {
-@@ -4665,6 +4862,15 @@ static struct clk_regmap *gcc_ipq8074_cl
- 	[GCC_PCIE0_RCHNG_CLK_SRC] = &pcie0_rchng_clk_src.clkr,
+@@ -4870,6 +4870,15 @@ static struct clk_regmap *gcc_ipq8074_cl
  	[GCC_PCIE0_RCHNG_CLK] = &gcc_pcie0_rchng_clk.clkr,
  	[GCC_PCIE0_AXI_S_BRIDGE_CLK] = &gcc_pcie0_axi_s_bridge_clk.clkr,
-+	[GCC_SNOC_BUS_TIMEOUT2_AHB_CLK] = &gcc_snoc_bus_timeout2_ahb_clk.clkr,
-+	[GCC_SNOC_BUS_TIMEOUT3_AHB_CLK] = &gcc_snoc_bus_timeout3_ahb_clk.clkr,
-+	[GCC_DCC_CLK] = &gcc_dcc_clk.clkr,
-+	[QDSS_TSCTR_CLK_SRC] = &qdss_tsctr_clk_src.clkr,
-+	[QDSS_AT_CLK_SRC] = &qdss_at_clk_src.clkr,
-+	[GCC_QDSS_AT_CLK] = &gcc_qdss_at_clk.clkr,
-+	[GCC_QDSS_DAP_CLK] = &gcc_qdss_dap_clk.clkr,
-+	[ADSS_PWM_CLK_SRC] = &adss_pwm_clk_src.clkr,
-+	[GCC_ADSS_PWM_CLK] = &gcc_adss_pwm_clk.clkr,
+ 	[GCC_CRYPTO_PPE_CLK] = &gcc_crypto_ppe_clk.clkr,
++    [GCC_SNOC_BUS_TIMEOUT2_AHB_CLK] = &gcc_snoc_bus_timeout2_ahb_clk.clkr,
++    [GCC_SNOC_BUS_TIMEOUT3_AHB_CLK] = &gcc_snoc_bus_timeout3_ahb_clk.clkr,
++    [GCC_DCC_CLK] = &gcc_dcc_clk.clkr,
++    [QDSS_TSCTR_CLK_SRC] = &qdss_tsctr_clk_src.clkr,
++    [QDSS_AT_CLK_SRC] = &qdss_at_clk_src.clkr,
++    [GCC_QDSS_AT_CLK] = &gcc_qdss_at_clk.clkr,
++    [GCC_QDSS_DAP_CLK] = &gcc_qdss_dap_clk.clkr,
++    [ADSS_PWM_CLK_SRC] = &adss_pwm_clk_src.clkr,
++    [GCC_ADSS_PWM_CLK] = &gcc_adss_pwm_clk.clkr,
  };
- 
+
  static const struct qcom_reset_map gcc_ipq8074_resets[] = {
+
 --- a/include/dt-bindings/clock/qcom,gcc-ipq8074.h
 +++ b/include/dt-bindings/clock/qcom,gcc-ipq8074.h
 @@ -230,10 +230,19 @@
@@ -292,20 +293,20 @@ Signed-off-by: Rajkumar Ayyasamy <arajkuma@codeaurora.org>
 -#define GCC_PCIE0_AXI_S_BRIDGE_CLK		224
 -#define GCC_PCIE0_RCHNG_CLK_SRC			225
 -#define GCC_PCIE0_RCHNG_CLK			226
--#define GCC_CRYPTO_PPE_CLK 			227
-+#define GCC_CRYPTO_PPE_CLK 			224
-+#define GCC_PCIE0_RCHNG_CLK_SRC 		225
-+#define GCC_PCIE0_RCHNG_CLK 			226
-+#define GCC_PCIE0_AXI_S_BRIDGE_CLK 		227
-+#define GCC_SNOC_BUS_TIMEOUT2_AHB_CLK 		228
-+#define GCC_SNOC_BUS_TIMEOUT3_AHB_CLK 		229
-+#define GCC_DCC_CLK 				230
-+#define ADSS_PWM_CLK_SRC 			231
-+#define GCC_ADSS_PWM_CLK 			232
-+#define QDSS_TSCTR_CLK_SRC 			233
-+#define QDSS_AT_CLK_SRC 			234
-+#define GCC_QDSS_AT_CLK 			235
-+#define GCC_QDSS_DAP_CLK 			236
- 
+-#define GCC_CRYPTO_PPE_CLK			227
++#define GCC_CRYPTO_PPE_CLK             224
++#define GCC_PCIE0_RCHNG_CLK_SRC        225
++#define GCC_PCIE0_RCHNG_CLK            226
++#define GCC_PCIE0_AXI_S_BRIDGE_CLK         227
++#define GCC_SNOC_BUS_TIMEOUT2_AHB_CLK      228
++#define GCC_SNOC_BUS_TIMEOUT3_AHB_CLK      229
++#define GCC_DCC_CLK                230
++#define ADSS_PWM_CLK_SRC           231
++#define GCC_ADSS_PWM_CLK           232
++#define QDSS_TSCTR_CLK_SRC         233
++#define QDSS_AT_CLK_SRC            234
++#define GCC_QDSS_AT_CLK            235
++#define GCC_QDSS_DAP_CLK           236
+
  #define GCC_BLSP1_BCR				0
  #define GCC_BLSP1_QUP1_BCR			1
