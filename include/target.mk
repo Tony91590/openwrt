@@ -17,7 +17,7 @@ DEFAULT_PACKAGES:=\
 	fstools \
 	libc \
 	libgcc \
-	libustream-wolfssl \
+	libustream-openssl \
 	logd \
 	mtd \
 	netifd \
@@ -53,14 +53,28 @@ DEFAULT_PACKAGES.nas:=\
 	mdadm
 # For router targets
 DEFAULT_PACKAGES.router:=\
-	dnsmasq \
-	firewall4 \
-	nftables \
-	kmod-nft-offload \
-	odhcp6c \
-	odhcpd-ipv6only \
+	dnsmasq-full \
+	firewall \
+	iptables \
+	ipv6helper \
 	ppp \
 	ppp-mod-pppoe
+# For easy usage
+DEFAULT_PACKAGES.tweak:=\
+	block-mount \
+	default-settings \
+	kmod-ipt-raw \
+	kmod-nf-nathelper \
+	kmod-nf-nathelper-extra \
+	luci \
+	luci-app-upnp \
+	luci-app-cpufreq \
+	luci-app-turboacc \
+	luci-theme-argon \
+	luci-compat \
+	luci-lib-base \
+	luci-lib-fs \
+	luci-lib-ipkg
 
 ifneq ($(DUMP),)
   all: dumpinfo
@@ -92,6 +106,9 @@ else
     -include ./$(SUBTARGET)/target.mk
   endif
 endif
+
+# Add tweaked packages
+DEFAULT_PACKAGES += $(DEFAULT_PACKAGES.tweak)
 
 # Add device specific packages (here below to allow device type set from subtarget)
 DEFAULT_PACKAGES += $(DEFAULT_PACKAGES.$(DEVICE_TYPE))
@@ -232,7 +249,7 @@ ifeq ($(DUMP),1)
     CPU_CFLAGS_464fp:=-mcpu=464fp
   endif
   ifeq ($(ARCH),powerpc64)
-    CPU_TYPE ?= powerpc64
+    CPU_TYPE ?= powerpc64 
     CPU_CFLAGS_e5500:=-mcpu=e5500
     CPU_CFLAGS_powerpc64:=-mcpu=powerpc64
   endif
