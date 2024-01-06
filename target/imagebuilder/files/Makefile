@@ -27,6 +27,7 @@ include $(INCLUDE_DIR)/rootfs.mk
 
 include $(INCLUDE_DIR)/version.mk
 export REVISION
+export SOURCE_DATE_EPOCH
 
 define Helptext
 Available Commands:
@@ -47,6 +48,7 @@ Building images:
 	make image EXTRA_IMAGE_NAME="<string>" # Add this to the output image filename (sanitized)
 	make image DISABLED_SERVICES="<svc1> [<svc2> [<svc3> ..]]" # Which services in /etc/init.d/ should be disabled
 	make image ADD_LOCAL_KEY=1 # store locally generated signing key in built images
+	make image ROOTFS_PARTSIZE="<size>" # override the default rootfs partition size in MegaBytes
 
 Print manifest:
 	List "all" packages which get installed into the image.
@@ -102,13 +104,16 @@ staging_dir/host/.prereq-build: include/prereq-build.mk
 
 _call_info: FORCE
 	echo 'Current Target: "$(TARGETID)"'
+	echo 'Current Architecture: "$(ARCH)"'
 	echo 'Current Revision: "$(REVISION)"'
 	echo 'Default Packages: $(DEFAULT_PACKAGES)'
 	echo 'Available Profiles:'
 	echo; $(PROFILE_LIST)
 
-BUILD_PACKAGES:=$(USER_PACKAGES) $(sort $(DEFAULT_PACKAGES) $($(USER_PROFILE)_PACKAGES) kernel)
+BUILD_PACKAGES:=$(sort $(DEFAULT_PACKAGES) $($(USER_PROFILE)_PACKAGES) kernel)
 # "-pkgname" in the package list means remove "pkgname" from the package list
+BUILD_PACKAGES:=$(filter-out $(filter -%,$(BUILD_PACKAGES)) $(patsubst -%,%,$(filter -%,$(BUILD_PACKAGES))),$(BUILD_PACKAGES))
+BUILD_PACKAGES:=$(USER_PACKAGES) $(BUILD_PACKAGES)
 BUILD_PACKAGES:=$(filter-out $(filter -%,$(BUILD_PACKAGES)) $(patsubst -%,%,$(filter -%,$(BUILD_PACKAGES))),$(BUILD_PACKAGES))
 PACKAGES:=
 
@@ -243,7 +248,8 @@ image:
 		$(if $(FILES),USER_FILES="$(FILES)") \
 		$(if $(PACKAGES),USER_PACKAGES="$(PACKAGES)") \
 		$(if $(BIN_DIR),BIN_DIR="$(BIN_DIR)") \
-		$(if $(DISABLED_SERVICES),DISABLED_SERVICES="$(DISABLED_SERVICES)"))
+		$(if $(DISABLED_SERVICES),DISABLED_SERVICES="$(DISABLED_SERVICES)") \
+		$(if $(ROOTFS_PARTSIZE),CONFIG_TARGET_ROOTFS_PARTSIZE="$(ROOTFS_PARTSIZE)"))
 
 manifest: FORCE
 	$(MAKE) -s _check_profile

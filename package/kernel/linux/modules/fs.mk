@@ -70,7 +70,6 @@ define KernelPackage/fs-btrfs
   DEPENDS:=+kmod-lib-crc32c +kmod-lib-lzo +kmod-lib-zlib-inflate +kmod-lib-zlib-deflate +kmod-lib-raid6 +kmod-lib-xor +kmod-lib-zstd
   KCONFIG:=\
 	CONFIG_BTRFS_FS \
-	CONFIG_BTRFS_FS_POSIX_ACL=n \
 	CONFIG_BTRFS_FS_CHECK_INTEGRITY=n
   FILES:=\
 	$(LINUX_DIR)/fs/btrfs/btrfs.ko
@@ -381,6 +380,7 @@ $(eval $(call KernelPackage,fs-nfs))
 define KernelPackage/fs-nfs-common
   SUBMENU:=$(FS_MENU)
   TITLE:=Common NFS filesystem modules
+  DEPENDS:=+kmod-oid-registry
   KCONFIG:= \
 	CONFIG_LOCKD \
 	CONFIG_SUNRPC \
@@ -413,10 +413,9 @@ define KernelPackage/fs-nfs-common-rpcsec
 	CONFIG_SUNRPC_GSS \
 	CONFIG_RPCSEC_GSS_KRB5
   FILES:= \
-	$(LINUX_DIR)/lib/oid_registry.ko \
 	$(LINUX_DIR)/net/sunrpc/auth_gss/auth_rpcgss.ko \
 	$(LINUX_DIR)/net/sunrpc/auth_gss/rpcsec_gss_krb5.ko
-  AUTOLOAD:=$(call AutoLoad,31,oid_registry auth_rpcgss rpcsec_gss_krb5)
+  AUTOLOAD:=$(call AutoLoad,31,auth_rpcgss rpcsec_gss_krb5)
 endef
 
 define KernelPackage/fs-nfs-common-rpcsec/description
@@ -485,7 +484,7 @@ $(eval $(call KernelPackage,fs-nfsd))
 
 define KernelPackage/fs-ntfs
   SUBMENU:=$(FS_MENU)
-  TITLE:=NTFS filesystem support
+  TITLE:=NTFS filesystem read-only (old driver) support
   KCONFIG:=CONFIG_NTFS_FS
   FILES:=$(LINUX_DIR)/fs/ntfs/ntfs.ko
   AUTOLOAD:=$(call AutoLoad,30,ntfs)
@@ -493,10 +492,32 @@ define KernelPackage/fs-ntfs
 endef
 
 define KernelPackage/fs-ntfs/description
- Kernel module for NTFS filesystem support
+ Kernel module for limited NTFS filesystem support. Support for writing
+ is extremely limited and disabled as a result.
 endef
 
 $(eval $(call KernelPackage,fs-ntfs))
+
+
+define KernelPackage/pstore
+  SUBMENU:=$(FS_MENU)
+  TITLE:=Pstore file system
+  DEFAULT:=m if ALL_KMODS
+  KCONFIG:= \
+	CONFIG_PSTORE \
+	CONFIG_PSTORE_COMPRESS=y \
+	CONFIG_PSTORE_COMPRESS_DEFAULT="deflate" \
+	CONFIG_PSTORE_DEFLATE_COMPRESS=y \
+	CONFIG_PSTORE_DEFLATE_COMPRESS_DEFAULT=y
+  FILES:= $(LINUX_DIR)/fs/pstore/pstore.ko
+  AUTOLOAD:=$(call AutoLoad,30,pstore,1)
+endef
+
+define KernelPackage/pstore/description
+ Kernel module for pstore filesystem support
+endef
+
+$(eval $(call KernelPackage,pstore))
 
 
 define KernelPackage/fs-reiserfs

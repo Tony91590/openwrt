@@ -12,6 +12,7 @@ BIN_VERSION:=$(PKG_VERSION)
 
 PKG_SOURCE_URL:=@GNU/binutils/
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.xz
+PKG_CPE_ID:=cpe:/a:gnu:binutils
 
 TAR_OPTIONS += --exclude='*.rej'
 
@@ -33,6 +34,10 @@ endif
 
 ifeq ($(PKG_VERSION),2.37)
   PKG_HASH:=820d9724f020a3e69cb337893a0b63c2db161dadcb0e06fc11dc29eb1e84a32c
+endif
+
+ifeq ($(PKG_VERSION),2.38)
+  PKG_HASH:=e316477a914f567eccc34d5d29785b8b0f5a10208d36bbacedcc39048ecfe024
 endif
 
 HOST_BUILD_PARALLEL:=1

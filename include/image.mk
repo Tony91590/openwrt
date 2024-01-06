@@ -40,8 +40,10 @@ IMG_PREFIX_VERCODE:=$(if $(CONFIG_VERSION_CODE_FILENAMES),$(call sanitize,$(VERS
 IMG_PREFIX:=$(VERSION_DIST_SANITIZED)-$(IMG_PREFIX_VERNUM)$(IMG_PREFIX_VERCODE)$(IMG_PREFIX_EXTRA)$(BOARD)$(if $(SUBTARGET),-$(SUBTARGET))
 IMG_ROOTFS:=$(IMG_PREFIX)-rootfs
 IMG_COMBINED:=$(IMG_PREFIX)-combined
+ifeq ($(DUMP),)
 IMG_PART_SIGNATURE:=$(shell echo $(SOURCE_DATE_EPOCH)$(LINUX_VERMAGIC) | $(MKHASH) md5 | cut -b1-8)
 IMG_PART_DISKGUID:=$(shell echo $(SOURCE_DATE_EPOCH)$(LINUX_VERMAGIC) | $(MKHASH) md5 | sed -E 's/(.{8})(.{4})(.{4})(.{4})(.{10})../\1-\2-\3-\4-\500/')
+endif
 
 MKFS_DEVTABLE_OPT := -D $(INCLUDE_DIR)/device_table.txt
 
@@ -172,7 +174,9 @@ define Image/pad-to
 	mv $(1).new $(1)
 endef
 
+ifeq ($(DUMP),)
 ROOTFS_PARTSIZE=$(shell echo $$(($(CONFIG_TARGET_ROOTFS_PARTSIZE)*1024*1024)))
+endif
 
 define Image/pad-root-squashfs
 	$(call Image/pad-to,$(KDIR)/root.squashfs,$(if $(1),$(1),$(ROOTFS_PARTSIZE)))
@@ -229,8 +233,7 @@ $(eval $(foreach S,$(NAND_BLOCKSIZE),$(call Image/mkfs/jffs2-nand/template,$(S))
 define Image/mkfs/squashfs-common
 	$(STAGING_DIR_HOST)/bin/mksquashfs4 $(call mkfs_target_dir,$(1)) $@ \
 		-nopad -noappend -root-owned \
-		-comp $(SQUASHFSCOMP) $(SQUASHFSOPT) \
-		-processors 1
+		-comp $(SQUASHFSCOMP) $(SQUASHFSOPT)
 endef
 
 ifeq ($(CONFIG_TARGET_ROOTFS_SECURITY_LABELS),y)
@@ -394,6 +397,7 @@ define Device/Init
 
   DEVICE_DTS :=
   DEVICE_DTS_CONFIG :=
+  DEVICE_DTS_DELIMITER :=
   DEVICE_DTS_DIR :=
   DEVICE_DTS_OVERLAY :=
   DEVICE_FDT_NUM :=
@@ -419,8 +423,8 @@ DEFAULT_DEVICE_VARS := \
   DEVICE_NAME KERNEL KERNEL_INITRAMFS KERNEL_INITRAMFS_IMAGE KERNEL_SIZE \
   CMDLINE UBOOTENV_IN_UBI KERNEL_IN_UBI BLOCKSIZE PAGESIZE SUBPAGESIZE \
   VID_HDR_OFFSET UBINIZE_OPTS UBINIZE_PARTS MKUBIFS_OPTS DEVICE_DTS \
-  DEVICE_DTS_CONFIG DEVICE_DTS_DIR DEVICE_DTS_OVERLAY DEVICE_FDT_NUM \
-  DEVICE_IMG_PREFIX SOC BOARD_NAME UIMAGE_MAGIC UIMAGE_NAME \
+  DEVICE_DTS_CONFIG DEVICE_DTS_DELIMITER DEVICE_DTS_DIR DEVICE_DTS_OVERLAY \
+  DEVICE_FDT_NUM DEVICE_IMG_PREFIX SOC BOARD_NAME UIMAGE_MAGIC UIMAGE_NAME \
   SUPPORTED_DEVICES IMAGE_METADATA KERNEL_ENTRY KERNEL_LOADADDR \
   UBOOT_PATH IMAGE_SIZE \
   DEVICE_PACKAGES DEVICE_COMPAT_VERSION DEVICE_COMPAT_MESSAGE \
@@ -492,9 +496,9 @@ define Device/Build/initramfs
   $(BUILD_DIR)/json_info_files/$$(KERNEL_INITRAMFS_IMAGE).json: $(BIN_DIR)/$$(KERNEL_INITRAMFS_IMAGE)
 	@mkdir -p $$(shell dirname $$@)
 	DEVICE_ID="$(1)" \
-	BIN_DIR="$(BIN_DIR)" \
 	SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH) \
 	FILE_NAME="$$(notdir $$^)" \
+	FILE_DIR="$(KDIR)/tmp" \
 	FILE_TYPE="kernel" \
 	FILE_FILESYSTEM="initramfs" \
 	DEVICE_IMG_PREFIX="$$(DEVICE_IMG_PREFIX)" \
@@ -524,7 +528,8 @@ endif
 define Device/Build/compile
   $$(_COMPILE_TARGET): $(KDIR)/$(1)
   $(eval $(call Device/Export,$(KDIR)/$(1)))
-  $(KDIR)/$(1):
+  $(KDIR)/$(1): FORCE
+	rm -f $(KDIR)/$(1)
 	$$(call concat_cmd,$(COMPILE/$(1)))
 
 endef
@@ -599,9 +604,9 @@ define Device/Build/image
   $(BUILD_DIR)/json_info_files/$(call DEVICE_IMG_NAME,$(1),$(2)).json: $(BIN_DIR)/$(call DEVICE_IMG_NAME,$(1),$(2))$$(GZ_SUFFIX)
 	@mkdir -p $$(shell dirname $$@)
 	DEVICE_ID="$(DEVICE_NAME)" \
-	BIN_DIR="$(BIN_DIR)" \
 	SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH) \
 	FILE_NAME="$(DEVICE_IMG_NAME)" \
+	FILE_DIR="$(KDIR)/tmp" \
 	FILE_TYPE=$(word 1,$(subst ., ,$(2))) \
 	FILE_FILESYSTEM="$(1)" \
 	DEVICE_IMG_PREFIX="$(DEVICE_IMG_PREFIX)" \
@@ -645,9 +650,9 @@ define Device/Build/artifact
   $(BUILD_DIR)/json_info_files/$(DEVICE_IMG_PREFIX)-$(1).json: $(BIN_DIR)/$(DEVICE_IMG_PREFIX)-$(1)
 	@mkdir -p $$(shell dirname $$@)
 	DEVICE_ID="$(DEVICE_NAME)" \
-	BIN_DIR="$(BIN_DIR)" \
 	SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH) \
 	FILE_NAME="$(DEVICE_IMG_PREFIX)-$(1)" \
+	FILE_DIR="$(KDIR)/tmp" \
 	FILE_TYPE="$(1)" \
 	DEVICE_IMG_PREFIX="$(DEVICE_IMG_PREFIX)" \
 	DEVICE_VENDOR="$(DEVICE_VENDOR)" \

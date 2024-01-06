@@ -42,7 +42,7 @@ Link: https://patchwork.freedesktop.org/patch/msgid/20201211114237.213288-2-tomi
 
 --- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
 +++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
-@@ -4988,7 +4988,6 @@ static void dm_disable_vblank(struct drm
+@@ -5027,7 +5027,6 @@ static void dm_disable_vblank(struct drm
  static const struct drm_crtc_funcs amdgpu_dm_crtc_funcs = {
  	.reset = dm_crtc_reset_state,
  	.destroy = amdgpu_dm_crtc_destroy,
@@ -62,7 +62,7 @@ Link: https://patchwork.freedesktop.org/patch/msgid/20201211114237.213288-2-tomi
  	.page_flip		= drm_atomic_helper_page_flip,
 --- a/drivers/gpu/drm/arm/malidp_crtc.c
 +++ b/drivers/gpu/drm/arm/malidp_crtc.c
-@@ -510,7 +510,6 @@ static void malidp_crtc_disable_vblank(s
+@@ -513,7 +513,6 @@ static void malidp_crtc_disable_vblank(s
  }
  
  static const struct drm_crtc_funcs malidp_crtc_funcs = {
@@ -82,7 +82,7 @@ Link: https://patchwork.freedesktop.org/patch/msgid/20201211114237.213288-2-tomi
  	.atomic_duplicate_state = drm_atomic_helper_crtc_duplicate_state,
 --- a/drivers/gpu/drm/ast/ast_mode.c
 +++ b/drivers/gpu/drm/ast/ast_mode.c
-@@ -898,7 +898,6 @@ static void ast_crtc_atomic_destroy_stat
+@@ -901,7 +901,6 @@ static void ast_crtc_atomic_destroy_stat
  
  static const struct drm_crtc_funcs ast_crtc_funcs = {
  	.reset = ast_crtc_reset,
@@ -102,7 +102,7 @@ Link: https://patchwork.freedesktop.org/patch/msgid/20201211114237.213288-2-tomi
  int atmel_hlcdc_crtc_create(struct drm_device *dev)
 --- a/drivers/gpu/drm/drm_atomic_helper.c
 +++ b/drivers/gpu/drm/drm_atomic_helper.c
-@@ -3500,76 +3500,6 @@ fail:
+@@ -3519,76 +3519,6 @@ fail:
  EXPORT_SYMBOL(drm_atomic_helper_page_flip_target);
  
  /**
@@ -336,7 +336,7 @@ Link: https://patchwork.freedesktop.org/patch/msgid/20201211114237.213288-2-tomi
  	DRM_MODESET_LOCK_ALL_END(dev, ctx, ret);
 --- a/drivers/gpu/drm/i915/display/intel_display.c
 +++ b/drivers/gpu/drm/i915/display/intel_display.c
-@@ -16562,7 +16562,6 @@ fail:
+@@ -16563,7 +16563,6 @@ fail:
  }
  
  #define INTEL_CRTC_FUNCS \
@@ -346,7 +346,7 @@ Link: https://patchwork.freedesktop.org/patch/msgid/20201211114237.213288-2-tomi
  	.page_flip = drm_atomic_helper_page_flip, \
 --- a/drivers/gpu/drm/ingenic/ingenic-drm-drv.c
 +++ b/drivers/gpu/drm/ingenic/ingenic-drm-drv.c
-@@ -647,8 +647,6 @@ static const struct drm_crtc_funcs ingen
+@@ -692,8 +692,6 @@ static const struct drm_crtc_funcs ingen
  
  	.enable_vblank		= ingenic_drm_enable_vblank,
  	.disable_vblank		= ingenic_drm_disable_vblank,
@@ -357,7 +357,7 @@ Link: https://patchwork.freedesktop.org/patch/msgid/20201211114237.213288-2-tomi
  static const struct drm_plane_helper_funcs ingenic_drm_plane_helper_funcs = {
 --- a/drivers/gpu/drm/mediatek/mtk_drm_crtc.c
 +++ b/drivers/gpu/drm/mediatek/mtk_drm_crtc.c
-@@ -614,7 +614,6 @@ static const struct drm_crtc_funcs mtk_c
+@@ -617,7 +617,6 @@ static const struct drm_crtc_funcs mtk_c
  	.reset			= mtk_drm_crtc_reset,
  	.atomic_duplicate_state	= mtk_drm_crtc_duplicate_state,
  	.atomic_destroy_state	= mtk_drm_crtc_destroy_state,
@@ -395,7 +395,7 @@ Link: https://patchwork.freedesktop.org/patch/msgid/20201211114237.213288-2-tomi
  	.atomic_set_property = omap_crtc_atomic_set_property,
 --- a/drivers/gpu/drm/rcar-du/rcar_du_crtc.c
 +++ b/drivers/gpu/drm/rcar-du/rcar_du_crtc.c
-@@ -1138,7 +1138,6 @@ static const struct drm_crtc_funcs crtc_
+@@ -1150,7 +1150,6 @@ static const struct drm_crtc_funcs crtc_
  	.set_crc_source = rcar_du_crtc_set_crc_source,
  	.verify_crc_source = rcar_du_crtc_verify_crc_source,
  	.get_crc_sources = rcar_du_crtc_get_crc_sources,
@@ -405,7 +405,7 @@ Link: https://patchwork.freedesktop.org/patch/msgid/20201211114237.213288-2-tomi
  /* -----------------------------------------------------------------------------
 --- a/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
 +++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
-@@ -1642,7 +1642,6 @@ static const struct drm_crtc_funcs vop_c
+@@ -1649,7 +1649,6 @@ static const struct drm_crtc_funcs vop_c
  	.disable_vblank = vop_crtc_disable_vblank,
  	.set_crc_source = vop_crtc_set_crc_source,
  	.verify_crc_source = vop_crtc_verify_crc_source,
@@ -415,7 +415,7 @@ Link: https://patchwork.freedesktop.org/patch/msgid/20201211114237.213288-2-tomi
  static void vop_fb_unref_worker(struct drm_flip_work *work, void *val)
 --- a/drivers/gpu/drm/stm/ltdc.c
 +++ b/drivers/gpu/drm/stm/ltdc.c
-@@ -742,7 +742,6 @@ static const struct drm_crtc_funcs ltdc_
+@@ -746,7 +746,6 @@ static const struct drm_crtc_funcs ltdc_
  	.enable_vblank = ltdc_crtc_enable_vblank,
  	.disable_vblank = ltdc_crtc_disable_vblank,
  	.get_vblank_timestamp = drm_crtc_vblank_helper_get_vblank_timestamp,
@@ -435,7 +435,7 @@ Link: https://patchwork.freedesktop.org/patch/msgid/20201211114237.213288-2-tomi
  	.get_vblank_timestamp = drm_crtc_vblank_helper_get_vblank_timestamp,
 --- a/drivers/gpu/drm/vc4/vc4_txp.c
 +++ b/drivers/gpu/drm/vc4/vc4_txp.c
-@@ -380,7 +380,6 @@ static const struct drm_crtc_funcs vc4_t
+@@ -386,7 +386,6 @@ static const struct drm_crtc_funcs vc4_t
  	.reset			= vc4_crtc_reset,
  	.atomic_duplicate_state	= vc4_crtc_duplicate_state,
  	.atomic_destroy_state	= vc4_crtc_destroy_state,

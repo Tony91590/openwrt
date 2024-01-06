@@ -196,6 +196,21 @@ endef
 
 $(eval $(call KernelPackage,et131x))
 
+define KernelPackage/phy-microchip
+   SUBMENU:=$(NETWORK_DEVICES_MENU)
+   TITLE:=Microchip Ethernet PHY driver
+   KCONFIG:=CONFIG_MICROCHIP_PHY
+   DEPENDS:=+kmod-libphy
+   FILES:=$(LINUX_DIR)/drivers/net/phy/microchip.ko
+   AUTOLOAD:=$(call AutoLoad,18,microchip,1)
+endef
+
+define KernelPackage/phy-microchip/description
+   Supports the LAN88XX PHYs.
+endef
+
+$(eval $(call KernelPackage,phy-microchip))
+
 
 define KernelPackage/phylib-broadcom
    SUBMENU:=$(NETWORK_DEVICES_MENU)
@@ -208,6 +223,23 @@ define KernelPackage/phylib-broadcom
 endef
 
 $(eval $(call KernelPackage,phylib-broadcom))
+
+
+define KernelPackage/phy-ax88796b
+   SUBMENU:=$(NETWORK_DEVICES_MENU)
+   TITLE:=Asix PHY driver
+   KCONFIG:=CONFIG_AX88796B_PHY
+   DEPENDS:=+kmod-libphy
+   FILES:=$(LINUX_DIR)/drivers/net/phy/ax88796b.ko
+   AUTOLOAD:=$(call AutoProbe,ax88796b)
+endef
+
+define KernelPackage/phy-ax88796b/description
+   Currently supports the Asix Electronics PHY found in the X-Surf 100
+   AX88796B package.
+endef
+
+$(eval $(call KernelPackage,phy-ax88796b))
 
 
 define KernelPackage/phy-broadcom
@@ -243,6 +275,40 @@ endef
 $(eval $(call KernelPackage,phy-bcm84881))
 
 
+define KernelPackage/phy-marvell
+   SUBMENU:=$(NETWORK_DEVICES_MENU)
+   TITLE:=Marvell Gigabit Ethernet PHY driver
+   KCONFIG:=CONFIG_MARVELL_PHY
+   DEPENDS:=+kmod-libphy
+   FILES:=$(LINUX_DIR)/drivers/net/phy/marvell.ko
+   AUTOLOAD:=$(call AutoLoad,18,marvell)
+endef
+
+define KernelPackage/phy-marvell/description
+   Supports Marvell Gigabit Ethernet PHYs:
+   * 88E1101
+   * 88E1112
+   * 88E1111 (incl. Finisar variant)
+   * 88E1118
+   * 88E1121R
+   * 88E1145
+   * 88E1149R
+   * 88E1240
+   * 88E1318S
+   * 88E1116R
+   * 88E1510
+   * 88E1540
+   * 88E1545
+   * 88E3016
+   * 88E6341 family
+   * 88E6390 family
+   * 88E6393 family
+   * 88E1340S
+   * 88E1548P
+endef
+
+$(eval $(call KernelPackage,phy-marvell))
+
 
 define KernelPackage/phy-realtek
    SUBMENU:=$(NETWORK_DEVICES_MENU)
@@ -258,6 +324,22 @@ define KernelPackage/phy-realtek/description
 endef
 
 $(eval $(call KernelPackage,phy-realtek))
+
+
+define KernelPackage/phy-smsc
+   SUBMENU:=$(NETWORK_DEVICES_MENU)
+   TITLE:=SMSC PHY driver
+   KCONFIG:=CONFIG_SMSC_PHY
+   DEPENDS:=+kmod-libphy
+   FILES:=$(LINUX_DIR)/drivers/net/phy/smsc.ko
+   AUTOLOAD:=$(call AutoProbe,smsc)
+endef
+
+define KernelPackage/phy-smsc/description
+   Currently supports the LAN83C185, LAN8187 and LAN8700 PHYs
+endef
+
+$(eval $(call KernelPackage,phy-smsc))
 
 
 define KernelPackage/swconfig
@@ -1019,13 +1101,28 @@ endef
 
 $(eval $(call KernelPackage,forcedeth))
 
+define KernelPackage/fixed-phy
+  SUBMENU:=$(NETWORK_DEVICES_MENU)
+  TITLE:=MDIO Bus/PHY emulation with fixed speed/link PHYs
+  DEPENDS:=+kmod-libphy
+  KCONFIG:=CONFIG_FIXED_PHY
+  FILES:=$(LINUX_DIR)/drivers/net/phy/fixed_phy.ko
+  AUTOLOAD:=$(call AutoProbe,fixed_phy)
+endef
+
+define KernelPackage/fixed-phy/description
+ Kernel driver for "fixed" MDIO Bus to cover the boards
+ and devices that use PHYs that are not connected to the real MDIO bus.
+endef
+
+$(eval $(call KernelPackage,fixed-phy))
+
 define KernelPackage/of-mdio
   SUBMENU:=$(NETWORK_DEVICES_MENU)
   TITLE:=OpenFirmware MDIO support
-  DEPENDS:=+kmod-libphy @!TARGET_x86
+  DEPENDS:=+kmod-libphy +kmod-fixed-phy @!TARGET_x86
   KCONFIG:=CONFIG_OF_MDIO
   FILES:= \
-	$(LINUX_DIR)/drivers/net/phy/fixed_phy.ko \
 	$(LINUX_DIR)/drivers/of/of_mdio.ko@lt5.10 \
 	$(LINUX_DIR)/drivers/net/mdio/of_mdio.ko@ge5.10
   AUTOLOAD:=$(call AutoLoad,41,of_mdio)

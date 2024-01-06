@@ -27,6 +27,7 @@ GCC_DIR:=$(PKG_NAME)-$(PKG_VERSION)
 
 PKG_SOURCE_URL:=@GNU/gcc/gcc-$(PKG_VERSION)
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.xz
+PKG_CPE_ID:=cpe:/a:gnu:gcc
 
 ifeq ($(PKG_VERSION),8.4.0)
   PKG_HASH:=e30a6e52d10e1f27ed55104ad233c30bd1e99cfb5ff98ab022dc941edd1b2dd4
@@ -108,6 +109,7 @@ GCC_CONFIGURE:= \
 		$(if $(CONFIG_mips64)$(CONFIG_mips64el),--with-arch=mips64 \
 			--with-abi=$(call qstrip,$(CONFIG_MIPS64_ABI))) \
 		$(if $(CONFIG_arc),--with-cpu=$(CONFIG_CPU_TYPE)) \
+		$(if $(CONFIG_powerpc64), $(if $(CONFIG_USE_MUSL),--with-abi=elfv2)) \
 		--with-gmp=$(TOPDIR)/staging_dir/host \
 		--with-mpfr=$(TOPDIR)/staging_dir/host \
 		--with-mpc=$(TOPDIR)/staging_dir/host \

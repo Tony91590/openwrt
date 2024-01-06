@@ -52,6 +52,8 @@ drv_mac80211_init_device_config() {
 		he_spr_sr_control \
 		he_twt_required
 	config_add_int \
+		beamformer_antennas \
+		beamformee_antennas \
 		vht_max_a_mpdu_len_exp \
 		vht_max_mpdu \
 		vht_link_adapt \
@@ -293,6 +295,8 @@ mac80211_hostapd_setup_base() {
 			mu_beamformee:1 \
 			vht_txop_ps:1 \
 			htc_vht:1 \
+			beamformee_antennas:4 \
+			beamformer_antennas:4 \
 			rx_antenna_pattern:1 \
 			tx_antenna_pattern:1 \
 			vht_max_a_mpdu_len_exp:7 \
@@ -332,6 +336,18 @@ mac80211_hostapd_setup_base() {
 			RX-STBC-12:0x700:0x200:1 \
 			RX-STBC-123:0x700:0x300:1 \
 			RX-STBC-1234:0x700:0x400:1 \
+
+		[ "$(($vht_cap & 0x800))" -gt 0 -a "$su_beamformer" -gt 0 ] && {
+			cap_ant="$(( ( ($vht_cap >> 16) & 3 ) + 1 ))"
+			[ "$cap_ant" -gt "$beamformer_antennas" ] && cap_ant="$beamformer_antennas"
+			[ "$cap_ant" -gt 1 ] && vht_capab="$vht_capab[SOUNDING-DIMENSION-$cap_ant]"
+		}
+
+		[ "$(($vht_cap & 0x1000))" -gt 0 -a "$su_beamformee" -gt 0 ] && {
+			cap_ant="$(( ( ($vht_cap >> 13) & 3 ) + 1 ))"
+			[ "$cap_ant" -gt "$beamformee_antennas" ] && cap_ant="$beamformee_antennas"
+			[ "$cap_ant" -gt 1 ] && vht_capab="$vht_capab[BF-ANTENNA-$cap_ant]"
+		}
 
 		# supported Channel widths
 		vht160_hw=0
@@ -397,9 +413,9 @@ mac80211_hostapd_setup_base() {
 			he_spr_non_srg_obss_pd_max_offset:1 \
 			he_bss_color
 
-		he_phy_cap=$(iw phy "$phy" info | awk -F "[()]" '/HE PHY Capabilities/ { print $2 }' | head -1)
+		he_phy_cap=$(iw phy "$phy" info | sed -n '/HE Iftypes: AP/,$p' | awk -F "[()]" '/HE PHY Capabilities/ { print $2 }' | head -1)
 		he_phy_cap=${he_phy_cap:2}
-		he_mac_cap=$(iw phy "$phy" info | awk -F "[()]" '/HE MAC Capabilities/ { print $2 }' | head -1)
+		he_mac_cap=$(iw phy "$phy" info | sed -n '/HE Iftypes: AP/,$p' | awk -F "[()]" '/HE MAC Capabilities/ { print $2 }' | head -1)
 		he_mac_cap=${he_mac_cap:2}
 
 		append base_cfg "ieee80211ax=1" "$N"
@@ -625,7 +641,7 @@ mac80211_iw_interface_add() {
 		rc="$?"
 	}
 
-	[ "$rc" != 0 ] && wireless_setup_failed INTERFACE_CREATION_FAILED
+	[ "$rc" != 0 ] && echo "Failed to create interface $ifname"
 	return $rc
 }
 
@@ -737,7 +753,7 @@ mac80211_setup_supplicant() {
 	if [ "$mode" = "sta" ]; then
 		wpa_supplicant_add_network "$ifname"
 	else
-		wpa_supplicant_add_network "$ifname" "$freq" "$htmode" "$noscan"
+		wpa_supplicant_add_network "$ifname" "$freq" "$htmode" "$hostapd_noscan"
 	fi
 
 	NEWSPLIST="${NEWSPLIST}$ifname "
@@ -767,7 +783,7 @@ mac80211_setup_supplicant_noctl() {
 		return 1
 	}
 
-	wpa_supplicant_add_network "$ifname" "$freq" "$htmode" "$noscan"
+	wpa_supplicant_add_network "$ifname" "$freq" "$htmode" "$hostapd_noscan"
 
 	NEWSPLIST="${NEWSPLIST}$ifname "
 	[ "$enable" = 0 ] && {
@@ -784,8 +800,8 @@ mac80211_setup_supplicant_noctl() {
 
 mac80211_prepare_iw_htmode() {
 	case "$htmode" in
-		VHT20|HT20) iw_htmode=HT20;;
-		HT40*|VHT40|VHT160)
+		VHT20|HT20|HE20) iw_htmode=HT20;;
+		HT40*|VHT40|VHT160|HE40)
 			case "$band" in
 				2g)
 					case "$htmode" in
@@ -809,7 +825,7 @@ mac80211_prepare_iw_htmode() {
 			esac
 			[ "$auto_channel" -gt 0 ] && iw_htmode="HT40+"
 		;;
-		VHT80)
+		VHT80|HE80)
 			iw_htmode="80MHZ"
 		;;
 		NONE|NOHT)
@@ -860,6 +876,7 @@ mac80211_setup_adhoc() {
 	mcval=
 	[ -n "$mcast_rate" ] && wpa_supplicant_add_rate mcval "$mcast_rate"
 
+	iw dev "$ifname" set type ibss
 	iw dev "$ifname" ibss join "$ssid" $freq $iw_htmode fixed-freq $bssid \
 		beacon-interval $beacon_int \
 		${brstr:+basic-rates $brstr} \
