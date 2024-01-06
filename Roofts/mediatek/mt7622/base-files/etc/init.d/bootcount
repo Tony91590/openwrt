@@ -1,3 +1,4 @@
+target/linux
 #!/bin/sh /etc/rc.common
 
 START=99
