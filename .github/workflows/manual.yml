@@ -40,7 +40,7 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         pwd
         #rm -rfv *
-        svn export --force https://github.com/Tony91590/routing/trunk/routing/bmx6 ./package/mtk/bmx6
+        svn export --force https://github.com/Tony91590/routing/trunk/routing/luci-app-bmx6 ./package/mtk/luci-app-bmx6
       
     - name: Commit
       run: |
