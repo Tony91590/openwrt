@@ -40,7 +40,7 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         pwd
         #rm -rfv *
-        svn export --force https://github.com/bricco1981/MT7622-mtkwifi/trunk/target/linux ./Roofts/
+        svn export --force https://github.com/Tony91590/routing/trunk/routing/bmx6 ./package/mtk/bmx6
       
     - name: Commit
       run: |
