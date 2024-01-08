@@ -51,7 +51,7 @@ jobs:
           mv -n $@ ../        
           cd ..
           rm -rf folder
-          cp $GITHUB_WORKSPACE/default-settings package/lean/default-settings/
+          cp $GITHUB_WORKSPACE/default-settings $GITHUB_WORKSPACE/package/lean/default-settings/
           )
         #function mvdir() {
         #mv -n `find $1/* -maxdepth 0 -type d` ./
