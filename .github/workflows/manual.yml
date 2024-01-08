@@ -49,9 +49,8 @@ jobs:
           git sparse-checkout init --cone
           git sparse-checkout set $@
           mv -n $@ ../
-          mv -n ../default-settings ../package/lean/no
-          mv -n ../package/lean/no ../package/lean/default-settings
-          cd ..
+          mv -n ../default-settings .../package/lean/no        
+          cd ...
           rm -rf folder
           )
         #function mvdir() {
