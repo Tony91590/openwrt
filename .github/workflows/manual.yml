@@ -39,24 +39,39 @@ jobs:
       run: |
         sudo timedatectl set-timezone "$TZ"
         pwd
-        #rm -rfv *
-        svn export --force https://github.com/Tony91590/routing/trunk/bmx6 ./package/mtk/bmx6
-      
-    - name: Commit
+        #rm -rf `find ./* -maxdepth 0 -type d ! -name "diy"`
+        #git rm -r --cache *
+        
+        function git_sparse_clone() (
+          branch="$1" rurl="$2" localdir="$3" && shift 3
+          git clone -b $branch --depth 1 --filter=blob:none --sparse $rurl $localdir
+          cd $localdir
+          git sparse-checkout init --cone
+          git sparse-checkout set $@
+          mv -n $@ ../package/lean
+          cd ..
+          rm -rf folder
+          )
+        #function mvdir() {
+        #mv -n `find $1/* -maxdepth 0 -type d` ./
+        #rm -rf $1
+        #}
+        git_sparse_clone master "https://github.com/coolsnowwolf/lede" "folder" package/lean/default-settings
+         
+    - name: update jell
       run: |
         git config --global user.email Tony91590@hotmail.com
         git config --global user.name Tony91590
         git add .
-        git commit -m"action:`date`"
-        git pull --rebase
+        git commit -m "update $(date +%Y-%m-%d" "%H:%M:%S)"
+        #for pkg in $(git diff-tree --no-commit-id --name-only HEAD); do
+        #if [ "$(grep "PKG_RELEASE" $pkg/Makefile)" ]; then
+        #sed -i "s/PKG_RELEASE:=.*/PKG_RELEASE:=$(git rev-list --count main $pkg)/" $pkg/Makefile || true
+        #fi
+        #done
+        git reset --soft HEAD^
+        git add .
+        git commit -m "update $(date +%Y-%m-%d" "%H:%M:%S)"
+        git push -f
         
-    - name: Push changes
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}        
-                
-    - name: Delete workflow runs
-      uses: Mattraks/delete-workflow-runs@v2
-      with:
-        retain_days: 0
-        keep_minimum_runs: 5
+    
