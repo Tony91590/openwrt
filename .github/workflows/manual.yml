@@ -48,10 +48,10 @@ jobs:
           cd $localdir
           git sparse-checkout init --cone
           git sparse-checkout set $@
-          mv -n $@ ../
-          mv -n ../default-settings .../package/lean/no        
-          cd ...
+          mv -n $@ ../        
+          cd ..
           rm -rf folder
+          cp $GITHUB_WORKSPACE/default-settings package/lean/default-settings/
           )
         #function mvdir() {
         #mv -n `find $1/* -maxdepth 0 -type d` ./
