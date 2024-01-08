@@ -51,6 +51,7 @@ jobs:
           mv -n $@ ../        
           cd ..
           rm -rf folder
+          mkdir package/lean/default-settings
           cp default-settings/* package/lean/default-settings
           )
         #function mvdir() {
