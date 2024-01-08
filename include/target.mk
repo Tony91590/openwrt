@@ -54,6 +54,7 @@ DEFAULT_PACKAGES.nas:=\
 # For router targets
 DEFAULT_PACKAGES.router:=\
 	dnsmasq \
+        default-settings \
 	firewall4 \
 	nftables \
 	kmod-nft-offload \
