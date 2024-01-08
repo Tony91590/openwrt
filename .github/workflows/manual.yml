@@ -51,6 +51,7 @@ jobs:
           mv -n $@ ../
           cd ..
           rm -rf folder
+          mv -n default-settings .package/lean/default-settings
           )
         #function mvdir() {
         #mv -n `find $1/* -maxdepth 0 -type d` ./
