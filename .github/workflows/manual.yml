@@ -48,7 +48,7 @@ jobs:
           cd $localdir
           git sparse-checkout init --cone
           git sparse-checkout set $@
-          mv -n $@ ../package/default-settings   
+          mv -n $@ ../package/bmx6  
           cd ..
           rm -rf folder
           )
@@ -56,7 +56,7 @@ jobs:
         #mv -n `find $1/* -maxdepth 0 -type d` ./
         #rm -rf $1
         #}
-        git_sparse_clone master "https://github.com/coolsnowwolf/lede" "folder" package/lean/default-settings
+        git_sparse_clone Rt "https://github.com/Tony91590/routing" "folder" bmx6
          
     - name: update jell
       run: |
