@@ -1,6 +1,5 @@
 #!/bin/sh
 
-
 sed -i '/exit 0/d' /etc/rc.local
 echo "fw_setenv flag_try_sys1_failed 0
 fw_setenv flag_try_sys2_failed 0
