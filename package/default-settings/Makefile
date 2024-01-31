@@ -22,10 +22,6 @@ define Package/default-settings
   DEPENDS:=+luci-base +luci +@LUCI_LANG_fr
 endef
 
-define Package/default-settings/description
-	LuCI support for Default Settings.
-endef
-
 define Build/Compile
 endef
 
