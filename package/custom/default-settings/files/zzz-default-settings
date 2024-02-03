@@ -1,13 +1,13 @@
 #!/bin/sh
 
-uci set upnpd.config.enabled='1'
-uci commit upnpd
-
 fw_setenv boot_fw1 "run boot_rd_img;bootm"
 fw_setenv flag_try_sys1_failed 8
 fw_setenv flag_try_sys2_failed 8
 fw_setenv flag_boot_rootfs 0
 fw_setenv flag_boot_success 1
-fw_setenv flag_last_success 1
+fw_setenv flag_last_success 
+
+uci set upnpd.config.enabled='1'
+uci commit upnpd
 
 exit 0
