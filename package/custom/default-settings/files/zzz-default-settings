@@ -5,7 +5,7 @@ fw_setenv flag_try_sys1_failed 8
 fw_setenv flag_try_sys2_failed 8
 fw_setenv flag_boot_rootfs 0
 fw_setenv flag_boot_success 1
-fw_setenv flag_last_success 
+fw_setenv flag_last_success 1
 
 uci set upnpd.config.enabled='1'
 uci commit upnpd
