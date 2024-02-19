@@ -48,7 +48,7 @@ jobs:
           cd $localdir
           git sparse-checkout init --cone
           git sparse-checkout set $@
-          mv -n $@ ../target/linux/ipq807x/base-files/etc/hotplug.d/firmware/
+          mv -n $@ ../package/custom 
           cd ..
           rm -rf folder
           )
