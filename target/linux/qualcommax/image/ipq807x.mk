@@ -300,6 +300,17 @@ define Device/zte_mf269
 endef
 TARGET_DEVICES += zte_mf269
 
+define Device/xiaomi_ax3600-stock
+	$(call Device/xiaomi_ax3600)
+	DEVICE_VARIANT := (stock layout)
+	DEVICE_ALT0_VENDOR := Xiaomi
+	DEVICE_ALT0_MODEL := AX3600
+	DEVICE_ALT0_VARIANT := (custom U-Boot layout)
+	KERNEL_SIZE :=
+	ARTIFACTS :=
+endef
+TARGET_DEVICES += xiaomi_ax3600-stock
+
 define Device/zyxel_nbg7815
 	$(call Device/FitImage)
 	$(call Device/EmmcImage)
