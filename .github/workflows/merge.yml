@@ -48,7 +48,7 @@ jobs:
           cd $localdir
           git sparse-checkout init --cone
           git sparse-checkout set $@
-          mv -n $@ ../target/linux/mediatek/mt7622/base-files/etc/init.d
+          mv -n $@ ../target/linux/ipq807x/base-files/etc/hotplug.d/firmware/11-ath10k-caldata
           cd ..
           rm -rf folder
           )
@@ -56,8 +56,8 @@ jobs:
         #mv -n `find $1/* -maxdepth 0 -type d` ./
         #rm -rf $1
         #}
-        git_sparse_clone main "https://github.com/bricco1981/MT7622-mtkwifi" "folder" target/linux/mediatek/mt7622/base-files/etc/init.d
-         
+        git_sparse_clone master-ipq807x-stock "https://github.com/1715173329/imoutowrt" "folder" target/linux/ipq807x/base-files/etc/hotplug.d/firmware/11-ath10k-caldata
+  
     - name: update jell
       run: |
         git config --global user.email Tony91590@hotmail.com
