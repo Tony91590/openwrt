@@ -1,0 +1,77 @@
+name: Auto-update
+
+on:
+#  release:
+#    types: published
+#  push:
+#    branches:
+#      - master
+#    paths:
+#      - '.config'
+#  schedule:
+  #  - cron: 30 16 * * *
+  workflow_dispatch:
+    inputs:
+      SSH:
+        description: 'SSH connection to Actions?'
+        required: false
+        default: 'false'   
+        
+env:
+  REPO_BRANCH: hostapd
+  TZ: Asia/Shanghai
+  
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@main
+      
+    - name: SSH connection to Actions
+      uses: P3TERX/ssh2actions@v1.0.0
+      if: (github.event.inputs.SSH == 'true' || github.event.inputs.SSH  == '1') 
+      
+    - name: Initialization environment
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo timedatectl set-timezone "$TZ"
+        pwd
+        #rm -rf `find ./* -maxdepth 0 -type d ! -name "diy"`
+        #git rm -r --cache *
+        
+        function git_sparse_clone() (
+          branch="$1" rurl="$2" localdir="$3" && shift 3
+          git clone -b $branch --depth 1 --filter=blob:none --sparse $rurl $localdir
+          cd $localdir
+          git sparse-checkout init --cone
+          git sparse-checkout set $@
+          mv -n $@ ../target/linux/mediatek/mt7622/base-files/etc/init.d
+          cd ..
+          rm -rf folder
+          )
+        #function mvdir() {
+        #mv -n `find $1/* -maxdepth 0 -type d` ./
+        #rm -rf $1
+        #}
+        git_sparse_clone main "https://github.com/bricco1981/MT7622-mtkwifi" "folder" target/linux/mediatek/mt7622/base-files/etc/init.d
+         
+    - name: update jell
+      run: |
+        git config --global user.email Tony91590@hotmail.com
+        git config --global user.name Tony91590
+        git add .
+        git commit -m "update $(date +%Y-%m-%d" "%H:%M:%S)"
+        #for pkg in $(git diff-tree --no-commit-id --name-only HEAD); do
+        #if [ "$(grep "PKG_RELEASE" $pkg/Makefile)" ]; then
+        #sed -i "s/PKG_RELEASE:=.*/PKG_RELEASE:=$(git rev-list --count main $pkg)/" $pkg/Makefile || true
+        #fi
+        #done
+        git reset --soft HEAD^
+        git add .
+        git commit -m "update $(date +%Y-%m-%d" "%H:%M:%S)"
+        git push -f
+        
+    
