@@ -36,7 +36,8 @@
 		aiot {
 			label = "blue:aiot";
 			gpios = <&tlmm 51 GPIO_ACTIVE_HIGH>;
-			linux,default-trigger = "phy0tpt";
+			linux,default-trigger = "default-on";
+			default-state = "on";
 		};
 	};
 };
