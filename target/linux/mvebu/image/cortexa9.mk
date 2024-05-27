@@ -3,6 +3,8 @@
 # Copyright (C) 2012-2016 OpenWrt.org
 # Copyright (C) 2016 LEDE-project.org
 
+DTS_DIR := $(DTS_DIR)/marvell
+
 define Build/fortigate-header
   ( \
     dd if=/dev/zero bs=384 count=1 2>/dev/null; \
@@ -104,7 +106,7 @@ define Device/cznic_turris-omnia
   DEVICE_PACKAGES :=  \
     mkf2fs e2fsprogs kmod-fs-vfat kmod-nls-cp437 kmod-nls-iso8859-1 \
     wpad-basic-mbedtls kmod-ath9k kmod-ath10k-ct ath10k-firmware-qca988x-ct \
-    partx-utils kmod-i2c-mux-pca954x kmod-leds-turris-omnia
+    kmod-mt7915-firmware partx-utils kmod-i2c-mux-pca954x kmod-leds-turris-omnia
   IMAGES := sysupgrade.img.gz
   IMAGE/sysupgrade.img.gz := boot-scr | boot-img | sdcard-img | gzip | append-metadata
   SUPPORTED_DEVICES += armada-385-turris-omnia
@@ -388,3 +390,22 @@ define Device/solidrun_clearfog-pro-a1
   SUPPORTED_DEVICES += armada-388-clearfog armada-388-clearfog-pro
 endef
 TARGET_DEVICES += solidrun_clearfog-pro-a1
+
+define Device/synology_ds213j
+  DEVICE_VENDOR := Synology
+  DEVICE_MODEL := DS213j
+  KERNEL_SIZE := 6912k
+  IMAGE_SIZE := 7168k
+  FILESYSTEMS := squashfs ubifs
+  KERNEL := kernel-bin | append-dtb | uImage none
+  KERNEL_INITRAMFS := kernel-bin | append-dtb | uImage none
+  DEVICE_DTS := armada-370-synology-ds213j
+  IMAGES := sysupgrade.bin
+  IMAGE/sysupgrade.bin := append-kernel | append-rootfs | pad-rootfs | \
+                          check-size | append-metadata
+  DEVICE_PACKAGES := \
+    kmod-rtc-s35390a kmod-hwmon-gpiofan kmod-hwmon-drivetemp \
+    kmod-md-raid0 kmod-md-raid1 kmod-md-mod e2fsprogs mdadm \
+    -ppp -kmod-nft-offload -firewall4 -dnsmasq -odhcpd-ipv6only
+endef
+TARGET_DEVICES += synology_ds213j

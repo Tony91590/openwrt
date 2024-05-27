@@ -120,17 +120,6 @@
 			status = "disabled";
 		};
 
-		systick: systick@500 {
-			compatible = "ralink,mt7621-systick", "ralink,cevt-systick";
-			reg = <0x500 0x10>;
-
-			resets = <&sysc MT7621_RST_AUX_STCK>;
-			reset-names = "intc";
-
-			interrupt-parent = <&gic>;
-			interrupts = <GIC_SHARED 5 IRQ_TYPE_LEVEL_HIGH>;
-		};
-
 		memc: memory-controller@5000 {
 			compatible = "mediatek,mt7621-memc", "syscon";
 			reg = <0x5000 0x1000>;
@@ -485,6 +474,36 @@
 				#interrupt-cells = <1>;
 				interrupts = <GIC_SHARED 23 IRQ_TYPE_LEVEL_HIGH>;
 
+				mdio {
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					ethphy0: ethernet-phy@0 {
+						reg = <0>;
+						interrupts = <0>;
+					};
+
+					ethphy1: ethernet-phy@1 {
+						reg = <1>;
+						interrupts = <1>;
+					};
+
+					ethphy2: ethernet-phy@2 {
+						reg = <2>;
+						interrupts = <2>;
+					};
+
+					ethphy3: ethernet-phy@3 {
+						reg = <3>;
+						interrupts = <3>;
+					};
+
+					ethphy4: ethernet-phy@4 {
+						reg = <4>;
+						interrupts = <4>;
+					};
+				};
+
 				ports {
 					#address-cells = <1>;
 					#size-cells = <0>;
@@ -493,30 +512,35 @@
 						status = "disabled";
 						reg = <0>;
 						label = "lan0";
+						phy-handle = <&ethphy0>;
 					};
 
 					port@1 {
 						status = "disabled";
 						reg = <1>;
 						label = "lan1";
+						phy-handle = <&ethphy1>;
 					};
 
 					port@2 {
 						status = "disabled";
 						reg = <2>;
 						label = "lan2";
+						phy-handle = <&ethphy2>;
 					};
 
 					port@3 {
 						status = "disabled";
 						reg = <3>;
 						label = "lan3";
+						phy-handle = <&ethphy3>;
 					};
 
 					port@4 {
 						status = "disabled";
 						reg = <4>;
 						label = "lan4";
+						phy-handle = <&ethphy4>;
 					};
 
 					port@6 {

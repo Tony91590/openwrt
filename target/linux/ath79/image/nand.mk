@@ -32,7 +32,7 @@ endef
 
 define Build/zyxel-factory
 	let \
-		maxsize="$(subst k,* 1024,$(RAS_ROOTFS_SIZE))"; \
+		maxsize="$(call exp_units,$(RAS_ROOTFS_SIZE))"; \
 		let size="$$(stat -c%s $@)"; \
 		if [ $$size -lt $$maxsize ]; then \
 			$(STAGING_DIR_HOST)/bin/mkrasimage \
@@ -190,7 +190,8 @@ define Device/glinet_gl-e750
   SOC := qca9531
   DEVICE_VENDOR := GL.iNet
   DEVICE_MODEL := GL-E750
-  DEVICE_PACKAGES := kmod-ath10k-ct ath10k-firmware-qca9887-ct kmod-usb2
+  DEVICE_PACKAGES := kmod-ath10k-ct ath10k-firmware-qca9887-ct kmod-usb2 \
+	kmod-usb-net-qmi-wwan kmod-usb-serial-option uqmi
   SUPPORTED_DEVICES += gl-e750
   KERNEL_SIZE := 4096k
   IMAGE_SIZE := 131072k
@@ -311,6 +312,7 @@ define Device/meraki_mr18
 # KERNEL_INITRAMFS := $$(KERNEL)
   KERNEL_INITRAMFS :=
   IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  SUPPORTED_DEVICES += mr18
 endef
 TARGET_DEVICES += meraki_mr18
 

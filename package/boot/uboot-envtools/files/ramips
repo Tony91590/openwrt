@@ -20,6 +20,7 @@ alfa-network,tube-e4g|\
 engenius,epg600|\
 engenius,esr600h|\
 linksys,re7000|\
+meig,slt866|\
 sitecom,wlr-4100-v1-002|\
 zyxel,keenetic-lite-iii-a)
 	ubootenv_add_uci_config "/dev/mtd1" "0x0" "0x1000" "0x1000"
@@ -43,6 +44,7 @@ beeline,smartbox-giga|\
 beeline,smartbox-turbo|\
 beeline,smartbox-turbo-plus|\
 etisalat,s3|\
+rostelecom,rt-fe-1a|\
 rostelecom,rt-sf-1)
 	ubootenv_add_uci_config "/dev/mtd0" "0x80000" "0x1000" "0x20000"
 	;;
@@ -71,6 +73,7 @@ belkin,rt1800|\
 h3c,tx1800-plus|\
 h3c,tx1801-plus|\
 h3c,tx1806|\
+iptime,ax2004m|\
 jcg,q20|\
 linksys,e7350|\
 netgear,eax12|\
@@ -90,13 +93,16 @@ ravpower,rp-wd03)
 		ubootenv_add_uci_config "/dev/mtd$idx" "0x4000" "0x1000" "0x1000"
 	;;
 beeline,smartbox-flash|\
+iptime,t5004|\
 linksys,ea6350-v4|\
 linksys,ea7300-v1|\
 linksys,ea7300-v2|\
 linksys,ea7500-v2|\
 linksys,ea8100-v1|\
 linksys,ea8100-v2|\
-mts,wg430223)
+mts,wg430223|\
+ubnt,edgerouter-x|\
+ubnt,edgerouter-x-sfp)
 	ubootenv_add_uci_config "/dev/mtd1" "0x0" "0x1000" "0x20000"
 	;;
 snr,snr-cpe-me1|\

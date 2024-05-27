@@ -2,6 +2,7 @@
 # MT7620A Profiles
 #
 
+include ./common-sercomm.mk
 include ./common-tp-link.mk
 
 DEVICE_VARS += DLINK_ROM_ID DLINK_FAMILY_MEMBER DLINK_FIRMWARE_SIZE DLINK_IMAGE_OFFSET
@@ -147,6 +148,16 @@ define Device/bdcom_wap2100-sk
 	kmod-sdhci-mt7620 kmod-usb-ledtrig-usbport
 endef
 TARGET_DEVICES += bdcom_wap2100-sk
+
+define Device/bolt_bl100
+  SOC := mt7620a
+  IMAGE_SIZE := 15872k
+  DEVICE_VENDOR := Bolt
+  DEVICE_MODEL := BL100
+  DEVICE_PACKAGES := kmod-mt76x2 kmod-usb2 kmod-usb-ohci
+  UIMAGE_MAGIC := 0x26112015
+endef
+TARGET_DEVICES += bolt_bl100
 
 define Device/buffalo_whr-1166d
   SOC := mt7620a
@@ -1102,6 +1113,27 @@ define Device/ravpower_rp-wd03
 endef
 TARGET_DEVICES += ravpower_rp-wd03
 
+define Device/rostelecom_rt-fl-1
+  $(Device/sercomm_cpj)
+  DEVICE_MODEL := RT-FL-1
+  DEVICE_ALT0_MODEL := RT-FL-1
+  ARTIFACT/initramfs-factory.img := \
+	append-image-stage initramfs-kernel.bin | check-size | \
+	sercomm-factory-cpj | gzip | sercomm-payload | \
+	sercomm-pid-setbit 0x11 | sercomm-crypto
+endef
+TARGET_DEVICES += rostelecom_rt-fl-1
+
+define Device/rostelecom_s1010
+  $(Device/sercomm_cpj)
+  DEVICE_MODEL := S1010
+  DEVICE_ALT0_MODEL := S1010.RT
+  ARTIFACT/initramfs-factory.img := \
+	append-image-stage initramfs-kernel.bin | check-size | \
+	sercomm-factory-cpj | gzip | sercomm-payload | sercomm-crypto
+endef
+TARGET_DEVICES += rostelecom_s1010
+
 define Device/sanlinking_d240
   SOC := mt7620a
   IMAGE_SIZE := 16064k
@@ -1192,6 +1224,23 @@ define Device/tplink_archer-c2-v1
 endef
 TARGET_DEVICES += tplink_archer-c2-v1
 
+define Device/tplink_archer-c5-v4
+  $(Device/tplink-v2)
+  SOC := mt7620a
+  IMAGE_SIZE := 7808k
+  TPLINK_FLASHLAYOUT := 8Mmtk
+  TPLINK_HWID := 0x04da857c
+  TPLINK_HWREV := 0x0c000600
+  TPLINK_HWREVADD := 0x04000000
+  IMAGES += tftp-recovery.bin
+  IMAGE/tftp-recovery.bin := pad-extra 128k | $$(IMAGE/factory.bin)
+  DEVICE_MODEL := Archer C5
+  DEVICE_VARIANT := v4
+  DEVICE_PACKAGES := kmod-usb2 kmod-usb-ohci kmod-usb-ledtrig-usbport \
+	kmod-mt76x2 kmod-switch-rtl8367b
+endef
+TARGET_DEVICES += tplink_archer-c5-v4
+
 define Device/tplink_archer-c50-v1
   $(Device/tplink-v2)
   SOC := mt7620a
@@ -1223,6 +1272,22 @@ define Device/tplink_archer-mr200
   SUPPORTED_DEVICES += mr200
 endef
 TARGET_DEVICES += tplink_archer-mr200
+
+define Device/tplink_ec220-g5-v2
+  $(Device/tplink-v2)
+  SOC := mt7620a
+  IMAGE_SIZE := 7808k
+  TPLINK_FLASHLAYOUT := 8Mmtk
+  TPLINK_HWID := 0x02015a15
+  TPLINK_HWREV := 0x55000600
+  TPLINK_HWREVADD := 0x03000000
+  IMAGES += tftp-recovery.bin
+  IMAGE/tftp-recovery.bin := pad-extra 128k | $$(IMAGE/factory.bin)
+  DEVICE_MODEL := EC220-G5
+  DEVICE_VARIANT := v2
+  DEVICE_PACKAGES := kmod-mt76x2 kmod-switch-rtl8367b
+endef
+TARGET_DEVICES += tplink_ec220-g5-v2
 
 define Device/tplink_re200-v1
   $(Device/tplink-v1)
@@ -1274,6 +1339,15 @@ define Device/wavlink_wl-wn530hg4
   DEVICE_PACKAGES := kmod-mt76x2
 endef
 TARGET_DEVICES += wavlink_wl-wn530hg4
+
+define Device/wavlink_wl-wn531g3
+  SOC := mt7620a
+  IMAGE_SIZE := 7808k
+  DEVICE_VENDOR := Wavlink
+  DEVICE_MODEL := WL-WN531G3
+  DEVICE_PACKAGES := kmod-mt76x2 kmod-phy-realtek kmod-usb2 kmod-usb-ohci
+endef
+TARGET_DEVICES += wavlink_wl-wn531g3
 
 define Device/wavlink_wl-wn535k1
   SOC := mt7620a

@@ -10,12 +10,12 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=cryptodev-linux
-PKG_VERSION:=1.12
+PKG_VERSION:=1.13
 PKG_RELEASE:=1
 
 PKG_SOURCE_URL:=https://codeload.github.com/$(PKG_NAME)/$(PKG_NAME)/tar.gz/$(PKG_NAME)-$(PKG_VERSION)?
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_HASH:=f51c2254749233b1b1d7ec9445158bd709f124f88e1c650fe2faac83c3a81938
+PKG_HASH:=33b7915c46eb39a37110e88c681423c0dd0df25d784b6e1475ac3196367f0db5
 PKG_LICENSE:=GPL-2.0
 PKG_LICENSE_FILES:=COPYING
 
@@ -29,7 +29,6 @@ define KernelPackage/cryptodev
   SUBMENU:=Cryptographic API modules
   TITLE:=Driver for cryptographic acceleration
   URL:=http://cryptodev-linux.org/
-  VERSION:=$(LINUX_VERSION)+$(PKG_VERSION)-$(BOARD)-$(PKG_RELEASE)
   DEPENDS:=+kmod-crypto-authenc +kmod-crypto-hash
   FILES:=$(PKG_BUILD_DIR)/cryptodev.$(LINUX_KMOD_SUFFIX)
   AUTOLOAD:=$(call AutoLoad,50,cryptodev)
@@ -41,13 +40,22 @@ define KernelPackage/cryptodev/description
   hardware ciphers by user-space applications.
 endef
 
+ifneq ($(CONFIG_PACKAGE_kmod-crypto-qce),)
+EXTRA_CFLAGS+=-DQCA
+endif
+
+ifneq ($(CONFIG_PACKAGE_kmod-qca-nss-crypto),)
+EXTRA_CFLAGS+=-DQCANSS
+endif
+
 define Build/Configure
 endef
 
 define Build/Compile
 	$(MAKE) -C $(PKG_BUILD_DIR) \
 		$(KERNEL_MAKE_FLAGS) \
-		KERNEL_DIR="$(LINUX_DIR)"
+		KERNEL_DIR="$(LINUX_DIR)" \
+		EXTRA_CFLAGS="$(EXTRA_CFLAGS)"
 endef
 
 define Build/InstallDev
