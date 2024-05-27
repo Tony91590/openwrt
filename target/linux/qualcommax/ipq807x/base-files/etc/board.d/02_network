@@ -28,7 +28,8 @@ ipq807x_setup_interfaces()
 	prpl,haze|\
 	redmi,ax6|\
 	spectrum,sax1v1k|\
-	xiaomi,ax3600)
+	xiaomi,ax3600|\
+	xiaomi,ax3600-stock)
 		ucidef_set_interfaces_lan_wan "lan1 lan2 lan3" "wan"
 		;;
 	edgecore,eap102|\
